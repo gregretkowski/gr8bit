@@ -9,7 +9,7 @@ yindex:
 out:
 #org 0xC0
 mainprog:
-       LDI 0x01
+       LDI 0x03
 newloop:
        STA xindex
        ADD xindex

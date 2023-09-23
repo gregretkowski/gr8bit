@@ -1,10 +1,9 @@
 # opcodes
 
-
 NOOP = 0b0 # No pins active, non-operation
 HLT  = 0b1 << 0  # Halt the computer
 CI   = 0b1 << 1  # PC Increment
-PCLI = 0b1 << 2  # PC 'low' load from bus
+PCLI = 0b1 << 2  # PC 'low' load from bus - SOON TO BE DEPRECATED
 AI   = 0b1 << 3  # Accumulator load from bus
 AO   = 0b1 << 4  # Accumulator write to bus
 MRLI = 0b1 << 5  # Memory Register Low load from bus
@@ -21,6 +20,39 @@ MO   = 0b1 << 11 # Memory Out to bus
 MI   = 0b1 << 12 # Memory read in from bus
 BI   = 0b1 << 13 # B regster in from bus
 BO   = 0b1 << 14 # B register out to bus
+
+# ALS1,2,3
+ALSU = 0b000 << 15 # ALU Unselected
+ALSA = 0b001 << 15 # ALU Select Addition
+ALSS = 0b010 << 15 # ALU Select Subtraction
+ALSX = 0b011 << 15 # ALU Select X
+ALSX = 0b100 << 15 # ALU Select X
+ALSX = 0b101 << 15 # ALU Select X
+ALSX = 0b110 << 15 # ALU Select X
+ALSC = 0b111 << 15 # ALU Select Compare
+
+# PCC1,2,3
+PCUU = 0b000 << 18 # PC Counters Unselected
+PLLU = 0b001 << 18 # PC Low in from bus, unconditional
+PLHU = 0b101 << 18 # PC Hi  in from bus, unconditional
+PLLE = 0b010 << 18 # PC Low in from bus, On Equal
+PLHE = 0b110 << 18 # PC Hi  in from bus, On Equal
+PLLC = 0b011 << 18 # PC Low in from bus, On Carry
+PLHC = 0b111 << 18 # PC Hi  in from bus, On Carry
+
+FI   = 0b1 << 21 # Flag Register set from bus
+FO   = 0b1 << 22 # Flag Register output to bus
+
+# Following are not yet implemented - just reserving them
+PCLO = 0b1 << 23  # PC 'low'  output to bus
+PCHO = 0b1 << 24  # PC 'high' output to bus
+
+SI   = 0b1 << 25 # Stack Register set from bus
+SO   = 0b1 << 26 # Stack Register output to bus
+
+# One is unused!
+# also could implement, if adding a bit: Neg, Ovf, various NOT's
+
 
 # These are a matrix of 2x2
 

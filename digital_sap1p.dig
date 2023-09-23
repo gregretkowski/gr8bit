@@ -2196,7 +2196,12 @@
     </visualElement>
     <visualElement>
       <elementName>alu_v2.dig</elementName>
-      <elementAttributes/>
+      <elementAttributes>
+        <entry>
+          <string>Label</string>
+          <string>ALU</string>
+        </entry>
+      </elementAttributes>
       <pos x="620" y="-340"/>
     </visualElement>
   </visualElements>

@@ -144,18 +144,18 @@ NV1B DIZC</string>
           <testData>
             <dataString>PC_sel flags_in pcli pchi
 # Not selected
-0b000 0b00000000 Z Z
+0b000 0b00000000 0 0
 # unconditional jump
-0b001 0b00000000 1 Z
-0b101 0b00000000 Z 1
+0b001 0b00000000 1 0
+0b101 0b00000000 0 1
 # jump if equal
-0b010 0b00000010 1 Z
-0b110 0b00000010 Z 1
-0b110 0b11111101 Z Z
+0b010 0b00000010 1 0
+0b110 0b00000010 0 1
+0b110 0b11111101 0 0
 # jump if carry
-0b011 0b00000001 1 Z
-0b111 0b00000001 Z 1
-0b111 0b11111110 Z Z</dataString>
+0b011 0b00000001 1 0
+0b111 0b00000001 0 1
+0b111 0b11111110 0 0</dataString>
           </testData>
         </entry>
       </elementAttributes>
@@ -392,10 +392,11 @@ NV1B DIZC</string>
           <testData>
             <dataString>clk rset cold_ena bus_in pcl_bo pch_bo pcli pchi
 C   0    1        Z      0xFC   0xFF   1    1
+C   0    1        Z      0xFC   0xFF   1    1
 # C   0    1        Z      X      X      X    X
-C   0    1        Z      X       X    Z    Z
-C   0    1        Z      X       X    Z    Z
-C   1    1        Z      X       X    Z    Z
+C   0    1        Z      X       X    0    0
+C   0    1        Z      X       X    0    0
+C   1    1        Z      X       X    0    0
 C   0    1        Z      0xFC   0xFF   1    1
 </dataString>
           </testData>
@@ -423,6 +424,10 @@ C   0    1        Z      0xFC   0xFF   1    1
         <entry>
           <string>Label</string>
           <string>coldstart</string>
+        </entry>
+        <entry>
+          <string>timerDelay</string>
+          <int>2</int>
         </entry>
       </elementAttributes>
       <pos x="-400" y="800"/>
@@ -484,12 +489,12 @@ C   0    1        Z      0xFC   0xFF   1    1
       <elementName>DriverInvSel</elementName>
       <elementAttributes>
         <entry>
-          <string>flipSelPos</string>
-          <boolean>true</boolean>
-        </entry>
-        <entry>
           <string>Bits</string>
           <int>8</int>
+        </entry>
+        <entry>
+          <string>flipSelPos</string>
+          <boolean>true</boolean>
         </entry>
       </elementAttributes>
       <pos x="-180" y="500"/>
@@ -498,12 +503,12 @@ C   0    1        Z      0xFC   0xFF   1    1
       <elementName>DriverInvSel</elementName>
       <elementAttributes>
         <entry>
-          <string>flipSelPos</string>
-          <boolean>true</boolean>
-        </entry>
-        <entry>
           <string>Bits</string>
           <int>8</int>
+        </entry>
+        <entry>
+          <string>flipSelPos</string>
+          <boolean>true</boolean>
         </entry>
       </elementAttributes>
       <pos x="-140" y="540"/>
@@ -586,6 +591,16 @@ C   0    1        Z      0xFC   0xFF   1    1
         </entry>
       </elementAttributes>
       <pos x="-20" y="640"/>
+    </visualElement>
+    <visualElement>
+      <elementName>PullDown</elementName>
+      <elementAttributes/>
+      <pos x="120" y="140"/>
+    </visualElement>
+    <visualElement>
+      <elementName>PullDown</elementName>
+      <elementAttributes/>
+      <pos x="120" y="60"/>
     </visualElement>
   </visualElements>
   <wires>
@@ -1096,6 +1111,14 @@ C   0    1        Z      0xFC   0xFF   1    1
     <wire>
       <p1 x="120" y="540"/>
       <p2 x="120" y="580"/>
+    </wire>
+    <wire>
+      <p1 x="120" y="120"/>
+      <p2 x="120" y="140"/>
+    </wire>
+    <wire>
+      <p1 x="120" y="40"/>
+      <p2 x="120" y="60"/>
     </wire>
     <wire>
       <p1 x="-380" y="20"/>

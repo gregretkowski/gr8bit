@@ -33,22 +33,23 @@ ALSC = 0b111 << 15 # ALU Select Compare
 
 # PCC1,2,3
 PCUU = 0b000 << 18 # PC Counters Unselected
-PLLU = 0b001 << 18 # PC Low in from bus, unconditional
-PLHU = 0b101 << 18 # PC Hi  in from bus, unconditional
-PLLE = 0b010 << 18 # PC Low in from bus, On Equal
-PLHE = 0b110 << 18 # PC Hi  in from bus, On Equal
-PLLC = 0b011 << 18 # PC Low in from bus, On Carry
-PLHC = 0b111 << 18 # PC Hi  in from bus, On Carry
+PCLU = 0b001 << 18 # PC Low in from bus, unconditional
+PCHU = 0b101 << 18 # PC Hi  in from bus, unconditional
+PCLE = 0b010 << 18 # PC Low in from bus, On Equal
+PCHE = 0b110 << 18 # PC Hi  in from bus, On Equal
+PCLC = 0b011 << 18 # PC Low in from bus, On Carry
+PCHC = 0b111 << 18 # PC Hi  in from bus, On Carry
 
 FI   = 0b1 << 21 # Flag Register set from bus
-FO   = 0b1 << 22 # Flag Register output to bus
+FC   = 0b1 << 22 # Flag Register clear
+FO   = 0b1 << 23 # Flag Register output to bus
 
 # Following are not yet implemented - just reserving them
-PCLO = 0b1 << 23  # PC 'low'  output to bus
-PCHO = 0b1 << 24  # PC 'high' output to bus
+PCLO = 0b1 << 24  # PC 'low'  output to bus
+PCHO = 0b1 << 25  # PC 'high' output to bus
 
-SI   = 0b1 << 25 # Stack Register set from bus
-SO   = 0b1 << 26 # Stack Register output to bus
+SI   = 0b1 << 26 # Stack Register set from bus
+SO   = 0b1 << 27 # Stack Register output to bus
 
 # One is unused!
 # also could implement, if adding a bit: Neg, Ovf, various NOT's
@@ -90,7 +91,7 @@ opCodes = {
        MRLI|MO|CI,
         MSMR,
         MSMR|BI|MO,
-        ALUO|AI|END     
+        ALSA|AI|END   
     ]],
                   #             add A + B, store result in A.
 #SUB   03  0011 aaaa   Put content of memory address aaaa into register B,
@@ -99,7 +100,7 @@ opCodes = {
     'STA': [ 0x04, [
         MRLI|MO|CI,
         MSMR,
-        MSMR|MI|AO
+        MSMR|MI|AO|END
     ]],
     # 0101 vvvv   Load 4 bit immediate value in register A (loads 'vvvv' in A).
     'LDI': [ 0x05, [
@@ -107,7 +108,9 @@ opCodes = {
     ]],
     # 0110 aaaa   Unconditional jump. Set program counter (PC) to aaaa,
     'JMP': [ 0x06, [
-        PCLI|MO|CI
+            BI|MO|CI,
+            PCHU|MO|CI,
+            BO|PCLU|END
     ]], 
                   #    resume execution from that memory address.
     'JC':  [ 0x07, []],  # 0111 aaaa   Jump if carry. Set PC to aaaa when carry flag is set and resume 

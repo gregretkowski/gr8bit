@@ -3,11 +3,11 @@
 NOOP = 0b0 # No pins active, non-operation
 HLT  = 0b1 << 0  # Halt the computer
 CI   = 0b1 << 1  # PC Increment
-PCLI = 0b1 << 2  # PC 'low' load from bus - SOON TO BE DEPRECATED
+PCLI = 0b1 << 2  # PC 'low' load from bus - DEPRECATED
 AI   = 0b1 << 3  # Accumulator load from bus
 AO   = 0b1 << 4  # Accumulator write to bus
 MRLI = 0b1 << 5  # Memory Register Low load from bus
-ALUO = 0b1 << 6  # ALU Write to bus
+ALUO = 0b1 << 6  # ALU Write to bus - DEPRECATED (done via ALS*)
 END  = 0b1 << 7  # END command, reset instruction step counter
 
 MSPC = 0b00 << 8 # Program Counter selected for addr bus
@@ -50,8 +50,9 @@ MRHI = 0b1 << 24  # Memory Register High load from bus
 PCLO = 0b1 << 25  # PC 'low'  output to bus
 PCHO = 0b1 << 26  # PC 'high' output to bus
 
-SI   = 0b1 << 27 # Stack Register set from bus
-SO   = 0b1 << 28 # Stack Register output to bus
+SPU  = 0b1 << 27 # Stack Register increment (up)
+SPD  = 0b1 << 28 # Stack Register decrement
+SPO  = 0b1 << 29 # Stack Register out to bus
 
 
 # One is unused!
@@ -140,6 +141,21 @@ opCodes = {
             PCHC|MO|CI,
             BO|PCLC|END
     ]],
+
+    # Push the accumulator onto the stack
+    'PHA':  [ 0x0B, [
+        SPU,
+        SPO|MRLI,
+        MSSP|MI|AO|END
+    ]],
+    # Pop from the stack into the accumulator
+    'PHA':  [ 0x0C, [
+        SPO|MRLI,
+        MSSP|AI|MO,
+        SPD|END
+    ]],
+# pha / pla (push A to stack / pop a from stack
+# jsr / rts jump to subroutine and return from subroutine ( stack stuff! )
 
     # Halt the computer    
     'HLT': [ 0x15, [HLT]],

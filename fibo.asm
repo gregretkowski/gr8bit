@@ -1,6 +1,6 @@
 ; fibo from ben eater sap1 adapted to my computer
 ; https://theshamblog.com/programs-and-more-commands-for-the-ben-eater-8-bit-breadboard-computer/
-#org 0x00
+#org 0x20
 xindex:
         0x00
 yindex:

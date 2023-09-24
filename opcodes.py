@@ -54,6 +54,11 @@ SPU  = 0b1 << 27 # Stack Register increment (up)
 SPD  = 0b1 << 28 # Stack Register decrement
 SPO  = 0b1 << 29 # Stack Register out to bus
 
+# X Register
+XI = 0b1 << 2
+XO = 0b1 << 6
+XU = 0b1 << 30
+XD = 0b1 << 31
 
 # One is unused!
 # also could implement, if adding a bit: Neg, Ovf, various NOT's
@@ -154,10 +159,27 @@ opCodes = {
         MSSP|AI|MO,
         SPD|END
     ]],
-# pha / pla (push A to stack / pop a from stack
+
 # jsr / rts jump to subroutine and return from subroutine ( stack stuff! )
+    'JSR': [ 0x0D, [
+        HLT
+    ]],
+    'RTS': [ 0x0E, [
+        HLT
+    ]],
+
+# X Register operations - X used for indexed memory ops
+    
+    'TAX': [ 0x10, [HLT]],
+    'TXA': [ 0x11, [HLT]],
+    'INX': [ 0x12, [HLT]],
+    'DEX': [ 0x13, [HLT]],
+
+# Load/Store the Acc at memory indexed by X
+    'LAX': [ 0x16, [HLT]],
+    'SAX': [ 0x17, [HLT]],
 
     # Halt the computer    
-    'HLT': [ 0x15, [HLT]],
+    'HLT': [ 0x1F, [HLT]],
 }
 

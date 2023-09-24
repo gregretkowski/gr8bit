@@ -149,7 +149,7 @@ opCodes = {
         MSSP|MI|AO|END
     ]],
     # Pop from the stack into the accumulator
-    'PHA':  [ 0x0C, [
+    'PLA':  [ 0x0C, [
         SPO|MRLI,
         MSSP|AI|MO,
         SPD|END

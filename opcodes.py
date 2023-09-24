@@ -118,6 +118,28 @@ opCodes = {
 # JZ    08  1000 aaaa   Jump if zero. As above, but when zero flag is set.
 # OUT   14  1110        Output register A to 7 segment LED display as decimal.
     # 1111        Halt execution.
+    
+    # Compare A register with memory location - sets flags
+    'CMP':  [ 0x08, [
+       MRLI|MO|CI,
+        MSMR,
+        MSMR|BI|MO,
+        ALSC|AI|END  
+        
+    ]],
+    # Branch if zero/equal flag set
+    'BEQ':  [ 0x09, [
+            BI|MO|CI,
+            PCHE|MO|CI,
+            BO|PCLE|END
+    ]],
+    # Clear/reset the flags register
+    'CLF':  [ 0x0A, [
+        FC|END
+    ]],
+
+    
+    # Halt the computer    
     'HLT': [ 0x15, [HLT]],  
 }
 

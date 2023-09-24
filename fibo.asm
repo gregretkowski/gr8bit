@@ -11,12 +11,26 @@ out:
 mainprog:
        LDI 0x03
 newloop:
+
+ ; Testing Compare/Branch
+       CLF
+       STA xindex
+       CMP xindex
+       HLT
+       BEQ newloop
+       HLT
+
+
        STA xindex
        ADD xindex
        STA yindex
        LDI 0x01
        LDA yindex
        STA out
+       CMP xindex
+       BEQ newloop
+       CLF
+       
        JMP newloop
 
 

@@ -3359,7 +3359,7 @@
       <elementAttributes>
         <entry>
           <string>Label</string>
-          <string>X REG</string>
+          <string>REG X</string>
         </entry>
       </elementAttributes>
       <pos x="640" y="460"/>

@@ -12,10 +12,10 @@ from helpers import hexdump, build_rom, write_rom
 def build_sequence(opcode=None):
     if opcode:
         steps_code_nested = [start_steps, opCodes[opcode][1], end_steps]
-        steps_code = [item for sub_list in steps_code_nested for item in sub_list]
     else:
-        steps_code = []
-    
+        # If getting an illegal opcode just skip it!
+        steps_code_nested = [start_steps, end_steps] 
+    steps_code = [item for sub_list in steps_code_nested for item in sub_list]
     bytess = bytearray()
     for step in range(MAX_STEPS):
         if step < len(steps_code):

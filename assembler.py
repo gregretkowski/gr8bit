@@ -219,7 +219,7 @@ def convert_to_rom(rom_start,rom_len,data):
         rom_mem += my_byte
     return rom_mem
 
-my_rom = convert_to_rom(192,64,my_data)
+my_rom = convert_to_rom(0xff00+192,64,my_data)
 print("ROM CONTENTS:")
 print(hexdump(my_rom))
 

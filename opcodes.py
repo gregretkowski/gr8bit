@@ -44,12 +44,15 @@ FI   = 0b1 << 21 # Flag Register set from bus
 FC   = 0b1 << 22 # Flag Register clear
 FO   = 0b1 << 23 # Flag Register output to bus
 
-# Following are not yet implemented - just reserving them
-PCLO = 0b1 << 24  # PC 'low'  output to bus
-PCHO = 0b1 << 25  # PC 'high' output to bus
+MRHI = 0b1 << 24  # Memory Register High load from bus
 
-SI   = 0b1 << 26 # Stack Register set from bus
-SO   = 0b1 << 27 # Stack Register output to bus
+# Following are not yet implemented - just reserving them
+PCLO = 0b1 << 25  # PC 'low'  output to bus
+PCHO = 0b1 << 26  # PC 'high' output to bus
+
+SI   = 0b1 << 27 # Stack Register set from bus
+SO   = 0b1 << 28 # Stack Register output to bus
+
 
 # One is unused!
 # also could implement, if adding a bit: Neg, Ovf, various NOT's
@@ -99,12 +102,13 @@ opCodes = {
     #  0100 aaaa   Store contents of register A at memory address aaaa.   
     'STA': [ 0x04, [
         MRLI|MO|CI,
+        MRHI|MO|CI,
         MSMR,
         MSMR|MI|AO|END
     ]],
     # 0101 vvvv   Load 4 bit immediate value in register A (loads 'vvvv' in A).
     'LDI': [ 0x05, [
-        AI|MO|CI,
+        AI|MO|CI|END,
     ]],
     # 0110 aaaa   Unconditional jump. Set program counter (PC) to aaaa,
     'JMP': [ 0x06, [
@@ -112,13 +116,6 @@ opCodes = {
             PCHU|MO|CI,
             BO|PCLU|END
     ]], 
-                  #    resume execution from that memory address.
-    'JC':  [ 0x07, []],  # 0111 aaaa   Jump if carry. Set PC to aaaa when carry flag is set and resume 
-                  #    from there. When carry flag is not set resume normally.
-# JZ    08  1000 aaaa   Jump if zero. As above, but when zero flag is set.
-# OUT   14  1110        Output register A to 7 segment LED display as decimal.
-    # 1111        Halt execution.
-    
     # Compare A register with memory location - sets flags
     'CMP':  [ 0x08, [
        MRLI|MO|CI,
@@ -137,9 +134,14 @@ opCodes = {
     'CLF':  [ 0x0A, [
         FC|END
     ]],
+    # Branch if carry flag set
+    'BCS':  [ 0x07, [
+            BI|MO|CI,
+            PCHC|MO|CI,
+            BO|PCLC|END
+    ]],
 
-    
     # Halt the computer    
-    'HLT': [ 0x15, [HLT]],  
+    'HLT': [ 0x15, [HLT]],
 }
 

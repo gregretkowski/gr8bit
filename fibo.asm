@@ -5,9 +5,9 @@ xindex:
         0x00
 yindex:
         0x00
-#org 0x80
+#org 0xFF80
 out:
-#org 0xC0
+#org 0xFFC0
 mainprog:
        LDI 0x03
 newloop:
@@ -16,22 +16,26 @@ newloop:
        CLF
        STA xindex
        CMP xindex
-       HLT
-       BEQ newloop
-       HLT
+  ;     BEQ newloop
 
 
+   ;    JMP newloop
+       
        STA xindex
        ADD xindex
        STA yindex
        LDI 0x01
+     ;  JMP newloop
+   
        LDA yindex
        STA out
        CMP xindex
        BEQ newloop
        CLF
+       LDI 0xf1
+       STA out
        
-       JMP newloop
+     ;  JMP newloop
 
 
         LDI 0x01
@@ -54,5 +58,5 @@ done:
 
 
 
-#org 0xfc
+#org 0xfffc
         JMP mainprog

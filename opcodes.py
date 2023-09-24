@@ -146,26 +146,50 @@ opCodes = {
             PCHC|MO|CI,
             BO|PCLC|END
     ]],
-
+    # STACK OPS - note stack pointer points at next available
+    # memory location.
     # Push the accumulator onto the stack
     'PHA':  [ 0x0B, [
-        SPU,
         SPO|MRLI,
-        MSSP|MI|AO|END
+        MSSP|MI|AO,
+        SPU|END
     ]],
     # Pop from the stack into the accumulator
     'PLA':  [ 0x0C, [
-        SPO|MRLI,
-        MSSP|AI|MO,
-        SPD|END
+        SPD,
+        SPO|MRLI|MSSP,
+        MSSP|AI|MO|END,
     ]],
 
 # jsr / rts jump to subroutine and return from subroutine ( stack stuff! )
     'JSR': [ 0x0D, [
-        HLT
+            # push flags, low bit, high bit
+            SPO|MRLI,           
+            MSSP|FO|MI|SPU,
+            SPO|MRLI,
+            MSSP|PCLO|MI|SPU,
+            SPO|MRLI,
+            MSSP|PCHO|MI|SPU,
+            # Now read in jump addrs & do the jump!
+            # Now do the jump!
+            BI|MO|CI,
+            PCHU|MO|CI,
+            BO|PCLU|END
+
     ]],
     'RTS': [ 0x0E, [
-        HLT
+            # pull high bit, low bit, flags
+            SPD,
+            SPO|MRLI,
+            PCHU|MO|SPD|MSSP,
+            SPO|MRLI,
+            PCLU|MO|SPD|MSSP,
+            SPO|MRLI,
+            FI|MO|MSSP, # This stack spot is now 'free' to be written to
+            # Tick forward past the 2 addrs that held the jsr addr
+            # We can then resume executing!
+            CI,
+            CI|END,
     ]],
 
 # X Register operations - X used for indexed memory ops

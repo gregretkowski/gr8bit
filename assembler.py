@@ -1,16 +1,24 @@
 #
 
 '''
-todo
-  * have it output a bin file that can be uploaded
-  * make sure indian'ness is alright (riht now its LLHH)
-  * make sure it's suitable for 8 bit address space
-todo
+TODO:
+Set to turbo syntax
+  http://turbo.style64.org/docs/turbo-macro-pro-tmpx-syntax
+  $ (hex) % (bin) 'a' (string text)
+  *=
+  .byte .word (word gets little indian'ed)
+  .text .null
+  label = $1234
+  .include "helpers.asm"
+  ? .binary "some.bin"
+  $20 + 4  (expressions)
+   <>! (select low or high byte of word)
+  
 
 '''
 # ITs a bug, but it currently does not honor any of this and
 # addresses have an extra 00 - which is a NOOP so its prolly okish
-eight_bit_addresses = True
+eight_bit_addresses = False
 little_indian = True
 
 '''
@@ -40,23 +48,35 @@ class Gr8Assembler:
     def __init__(self):
         pass
 
-
-    def parse_file(self,filename):
+    # Recursively read in files, supporting '#include' directive
+    #
+    def recursive_file_read(self,filename):
         lines = []
-        #if le
-        #f = open(sys.argv[1], 'r')
-        f = open(filename, 'r')
-        #f = open('testcode.txt', 'r')
+        line_ids = []
+        i = 0
+        try: f = open(filename, 'r')
+        except: print("ERROR: Can't find file \'"+filename+"\'."); exit(1)
         while True:
             line = f.readline()
-            if not line: break
-            lines.append(line.strip())
+            if not line: break # EOF
+            i+=1
+            line_stripped = line.strip()
+            line_id = f"{filename} line {i}"
+            
+            k = line.find('#include')
+            if k != -1:                                 # interpret anything after #include as a filename
+                line = line[k+8:].strip().replace('\"', '').replace('\'', '')
+                f_lines, f_line_ids = self.recursive_file_read(line)                        # read include files recursively
+                lines.extend(f_lines)
+                line_ids.extend(f_line_ids)
+            else:
+                lines.append(line_stripped)
+                line_ids.append(line_id)
         f.close()
-        lineinfo,lineaddr,lines = self.parse_lines(lines)
-        return(lineinfo,lineaddr,lines)
+        return lines, line_ids
 
 
-    def parse_lines(self,lines):
+    def parse_lines(self,lines,line_ids):
         # This function derived from:
         # https://github.com/slu4coder/Minimal-UART-CPU-System/blob/main/Python%20Assembler/asm.py
         # -------------------------------------------------------------------------------
@@ -82,7 +102,10 @@ class Gr8Assembler:
         # -------------------------------------------------------------------------------
         lineinfo, lineadr, labels = [], [], {}
         LINEINFO_NONE, LINEINFO_ORG, LINEINFO_BEGIN, LINEINFO_END = 0x00000, 0x10000, 0x20000, 0x40000
-        
+        #
+        #
+        # PASS 1
+        #
         for i in range(len(lines)):                         # PASS 1: do PER LINE replacements
             while(lines[i].find('\'') != -1):               # replace '...' occurances with corresponding ASCII code(s)
                 k = lines[i].find('\'')
@@ -117,6 +140,9 @@ class Gr8Assembler:
             lines[i] = lines[i].split()                     # now split line into list of bytes (omitting whitepaces)
 
             for j in range(len(lines[i])-1, -1, -1):        # iterate from back to front while inserting stuff
+                #if "0x0302" == lines[i][j]:
+                #    print(lines[i][j])
+                #    raise("found the val!")
                 try: lines[i][j] = str(opCodes[lines[i][j]][0])     # try replacing mnemonic with opcode
                 except: 
                     if lines[i][j].find('0x') == 0 and len(lines[i][j]) > 4:    # replace '0xWORD' with 'LSB MSB'
@@ -124,7 +150,11 @@ class Gr8Assembler:
                         lines[i][j] = str(val & 0xff)
                         if not eight_bit_addresses:
                             lines[i].insert(j+1, str((val>>8) & 0xff))
+                    #elif lines[i][j].find('0b') == 0 and len(lines[i][j]) > 4:
 
+        #
+        # PASS 2
+        #
         adr = 0                                             # PASS 2: default start address
         for i in range(len(lines)):
             for j in range(len(lines[i])-1, -1, -1):        # iterate from back to front while inserting stuff
@@ -164,7 +194,10 @@ class Gr8Assembler:
                         lines[i][j+1] = str((adr>>8) & 0xff)
                 except: pass
                 try: isinstance(lines[i][j], str) and int(lines[i][j], 0)                    # check if ALL elements are numeric
-                except: print('ERROR in line ' + str(i+1) + ': Undefined expression \'' + lines[i][j] + '\''); exit(1)
+                except:
+                    print('ERROR in ' + line_ids[i] + ': Undefined expression \'' + lines[i][j] + '\'')
+                    #print(line_ids[i])
+                    exit(1)
 
 
         insert = ''; showout = True                         # print out 16 data bytes per row in Minimal's 'cut & paste' format
@@ -245,7 +278,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     gr8a = Gr8Assembler()
-    lineinfo,lineaddr,lines = gr8a.parse_file(args.infile)
+
+    lines, line_ids = gr8a.recursive_file_read(args.infile)
+    lineinfo,lineaddr,lines = gr8a.parse_lines(lines,line_ids)
 
     mem_struct = gr8a.make_mem_struct(lineaddr,lines)
     

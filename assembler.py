@@ -57,21 +57,32 @@ class Gr8Assembler:
 
 
     def parse_lines(self,lines):
+        # This function derived from:
+        # https://github.com/slu4coder/Minimal-UART-CPU-System/blob/main/Python%20Assembler/asm.py
+        # -------------------------------------------------------------------------------
+        # Minimal Assembler for the 'MINIMAL CPU System' Revision 1.3 and higher
+        # Copyright (c) 2021, 2022 Carsten Herting (slu4)
+        # -------------------------------------------------------------------------------
+        # MIT LICENSE
+        # Permission is hereby granted, free of charge, to any person obtaining a copy of
+        # this software and associated  documentation files  (the "Software"), to deal in
+        # the Software without  restriction, including  without  limitation the rights to
+        # use, copy,  modify, merge, publish, distribute, sublicense,  and/or sell copies
+        # of the Software, and  to permit persons to whom the Software is furnished to do
+        # so, subject to the following conditions:
+        # The above copyright notice and  this permission notice shall be included in all
+        # copies or substantial portions of the Software.
+        # THE  SOFTWARE  IS PROVIDED "AS IS",  WITHOUT  WARRANTY OF  ANY KIND, EXPRESS OR
+        # IMPLIED,  INCLUDING  BUT  NOT  LIMITED  TO  THE  WARRANTIES OF MERCHANTABILITY,
+        # FITNESS FOR  A PARTICULAR  PURPOSE AND  NONINFRINGEMENT. IN NO  EVENT SHALL THE
+        # AUTHORS  OR  COPYRIGHT  HOLDERS  BE  LIABLE FOR  ANY  CLAIM, DAMAGES  OR  OTHER
+        # LIABILITY,  WHETHER IN AN ACTION  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+        # OUT OF OR IN  CONNECTION WITH  THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+        # SOFTWARE.
+        # -------------------------------------------------------------------------------
         lineinfo, lineadr, labels = [], [], {}
         LINEINFO_NONE, LINEINFO_ORG, LINEINFO_BEGIN, LINEINFO_END = 0x00000, 0x10000, 0x20000, 0x40000
         
-        # copypasta https://github.com/slu4coder/Minimal-UART-CPU-System/blob/main/Python%20Assembler/asm.py
-
-        '''
-           string_to_lineinfo(data_string)
-           returns
-           lineinfo, linadr, lines
-        '''
-        #print(lineinfo)
-        #print(lineadr)
-        #print(lines)
-
-
         for i in range(len(lines)):                         # PASS 1: do PER LINE replacements
             while(lines[i].find('\'') != -1):               # replace '...' occurances with corresponding ASCII code(s)
                 k = lines[i].find('\'')
@@ -129,7 +140,7 @@ class Gr8Assembler:
                 except: pass
             if lineinfo[i] & LINEINFO_ORG: adr = lineinfo[i] & 0xffff   # react to #org by resetting the address
             lineadr.append(adr);                            # save line start address
-            adr += len(lines[i])	  					    # advance address by number of (byte) elements
+            adr += len(lines[i])                            # advance address by number of (byte) elements
 
         for l in labels: labels[l] = lineadr[labels[l]]     # update label dictionary from 'line number' to 'address'
 
@@ -204,8 +215,11 @@ class Gr8Assembler:
             ROM. this'll return a bytearray of the ROM
         '''
         rom_start = int(rom_start,0)
+        rom_len = int(rom_len,0)
+        print(f"Rom Start: {rom_start} Rom End: {rom_start + rom_len}")
+        
         rom_mem = bytearray()
-        for idx in range(int(rom_len,0)):
+        for idx in range(rom_len):
             data_addr = rom_start + idx
             if data_addr in data:
                 my_byte = data[data_addr]
@@ -216,23 +230,19 @@ class Gr8Assembler:
         return rom_mem
 
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
                     prog='ProgramName',
                     description='What the program does',
                     epilog='Text at the bottom of help')
-    parser.add_argument('infile', help='the ASM filename for input')           # positional argument
+    parser.add_argument('infile', help='the ASM filename for input')
     parser.add_argument('outfile', help='the output ROM name')
     parser.add_argument('-s', '--rom_start', help='The start address of the ROM when installed in the host')
     parser.add_argument('-l', '--rom_length', help='The total addresses on the rom')
-    # parser.add_argument('-c', '--count')      # option that takes a value
     parser.add_argument('-v', '--verbose',
-                        action='store_true')  # on/off flag
+                        action='store_true')
 
     args = parser.parse_args()
-    # print(args.filename, args.count, args.verbose)
-
 
     gr8a = Gr8Assembler()
     lineinfo,lineaddr,lines = gr8a.parse_file(args.infile)
@@ -241,22 +251,9 @@ if __name__ == "__main__":
     
     my_rom = gr8a.convert_to_rom(args.rom_start,args.rom_length,mem_struct)
         
-    #my_rom = convert_to_rom(0xffC0,64,my_data)
     print("ROM CONTENTS:")
     print(hexdump(my_rom))
     # this is from 'helpers'
     write_rom(args.outfile,my_rom)
-
-
- #   my_data = make_mem_struct(lineadr,lines)
-#print(list(my_data.values())[20])
-#bs = bytearray()
-#for b in my_data.values():
-#    bs += b
-#    
-#print(hexdump(bs))
-#print(my_data[194])
-#print(lineinfo)
-#print(lineadr)
-#print(lines)
-
+    
+    # %Run assembler.py sp_test.asm 16k_rom.hex -s 0xc000 -l 16384

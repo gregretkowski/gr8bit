@@ -5,7 +5,7 @@ xindex:
         0x00
 yindex:
         0x00
-#org 0xFF80
+#org 0x8000
 out:
 #org 0xFFC0
 mainloop:

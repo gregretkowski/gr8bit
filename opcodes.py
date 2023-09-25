@@ -1,5 +1,10 @@
 # opcodes
 
+'''
+Control Lines - these map 1:1 with the control lines in Digital.
+Used later to construct microcode for each opcode
+
+'''
 NOOP = 0b0 # No pins active, non-operation
 HLT  = 0b1 << 0  # Halt the computer
 CI   = 0b1 << 1  # PC Increment
@@ -90,22 +95,30 @@ opCodes = {
     # 0001 aaaa   Load contents of memory address aaaa into register A.
     'LDA': [ 0x01, [
         MRLI|MO|CI,
+        MRHI|MO|CI,
         MSMR,
         MSMR|AI|MO|END
     ]],
 
-    # 0010 aaaa   Put content of memory address aaaa into register B,
-    # add A + B, store result in A.
+    # Retr mem location into B reg, add A + B, store result in A.
     'ADD': [ 0x02, [
        MRLI|MO|CI,
-        MSMR,
-        MSMR|BI|MO,
-        ALSA|AI|END   
+       MRHI|MO|CI,
+       MSMR,
+       MSMR|BI|MO,
+       ALSA|AI|END   
     ]],
-                  #             add A + B, store result in A.
-#SUB   03  0011 aaaa   Put content of memory address aaaa into register B,
-#                      substract A - B, store result in register A.
-    #  0100 aaaa   Store contents of register A at memory address aaaa.   
+    #SUB   03  0011 aaaa   Put content of memory address aaaa into register B,
+    #                      substract A - B, store result in register A.
+    # UNTESTED
+    'SUB': [ 0x03, [
+       MRLI|MO|CI,
+       MRHI|MO|CI,
+       MSMR,
+       MSMR|BI|MO,
+       ALSS|AI|END 
+    ]],
+    #  0100 aaaa   Store contents of register A at memory address aaaa.
     'STA': [ 0x04, [
         MRLI|MO|CI,
         MRHI|MO|CI,
@@ -118,23 +131,22 @@ opCodes = {
     ]],
     # 0110 aaaa   Unconditional jump. Set program counter (PC) to aaaa,
     'JMP': [ 0x06, [
-            BI|MO|CI,
-            PCHU|MO|CI,
-            BO|PCLU|END
+        BI|MO|CI,
+        PCHU|MO|CI,
+        BO|PCLU|END
     ]], 
     # Compare A register with memory location - sets flags
     'CMP':  [ 0x08, [
-       MRLI|MO|CI,
+        MRLI|MO|CI,
         MSMR,
         MSMR|BI|MO,
-        ALSC|AI|END  
-        
+        ALSC|AI|END
     ]],
     # Branch if zero/equal flag set
     'BEQ':  [ 0x09, [
-            BI|MO|CI,
-            PCHE|MO|CI,
-            BO|PCLE|END
+        BI|MO|CI,
+        PCHE|MO|CI,
+        BO|PCLE|END
     ]],
     # Clear/reset the flags register
     'CLF':  [ 0x0A, [
@@ -142,9 +154,9 @@ opCodes = {
     ]],
     # Branch if carry flag set
     'BCS':  [ 0x07, [
-            BI|MO|CI,
-            PCHC|MO|CI,
-            BO|PCLC|END
+        BI|MO|CI,
+        PCHC|MO|CI,
+        BO|PCLC|END
     ]],
     # STACK OPS - note stack pointer points at next available
     # memory location.
@@ -160,46 +172,41 @@ opCodes = {
         SPO|MRLI|MSSP,
         MSSP|AI|MO|END,
     ]],
-
-# jsr / rts jump to subroutine and return from subroutine ( stack stuff! )
+    # jsr / rts jump to subroutine and return from subroutine ( stack stuff! )
     'JSR': [ 0x0D, [
-            # push flags, low bit, high bit
-            SPO|MRLI,           
-            MSSP|FO|MI|SPU,
-            SPO|MRLI,
-            MSSP|PCLO|MI|SPU,
-            SPO|MRLI,
-            MSSP|PCHO|MI|SPU,
-            # Now read in jump addrs & do the jump!
-            # Now do the jump!
-            BI|MO|CI,
-            PCHU|MO|CI,
-            BO|PCLU|END
-
+        # push flags, low addr byte, high addr byte
+        SPO|MRLI,           
+        MSSP|FO|MI|SPU,
+        SPO|MRLI,
+        MSSP|PCLO|MI|SPU,
+        SPO|MRLI,
+        MSSP|PCHO|MI|SPU,
+        # Now read in jump addrs & do the jump!
+        # Now do the jump!
+        BI|MO|CI,
+        PCHU|MO|CI,
+        BO|PCLU|END
     ]],
     'RTS': [ 0x0E, [
-            # pull high bit, low bit, flags
-            SPD,
-            SPO|MRLI,
-            PCHU|MO|SPD|MSSP,
-            SPO|MRLI,
-            PCLU|MO|SPD|MSSP,
-            SPO|MRLI,
-            FI|MO|MSSP, # This stack spot is now 'free' to be written to
-            # Tick forward past the 2 addrs that held the jsr addr
-            # We can then resume executing!
-            CI,
-            CI|END,
+        # pull high addr byte, low addr byte, flags
+        SPD,
+        SPO|MRLI,
+        PCHU|MO|SPD|MSSP,
+        SPO|MRLI,
+        PCLU|MO|SPD|MSSP,
+        SPO|MRLI,
+        FI|MO|MSSP, # This stack spot is now 'free' to be written to
+        CI,         # Tick forward past the 2 addrs that held the jsr addr
+        CI|END,     # We can then resume executing!
     ]],
-
-# X Register operations - X used for indexed memory ops
-    
+    #
+    # X Register operations - X used for indexed memory ops
+    #
     'TAX': [ 0x10, [HLT]],
     'TXA': [ 0x11, [HLT]],
     'INX': [ 0x12, [HLT]],
     'DEX': [ 0x13, [HLT]],
-
-# Load/Store the Acc at memory indexed by X
+    # Load/Store the Acc at memory indexed by X
     'LAX': [ 0x16, [HLT]],
     'SAX': [ 0x17, [HLT]],
 

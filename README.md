@@ -1,7 +1,9 @@
 # GR 8bit Computer
 
-This is an 8 bit computer implemented with (Digital)[https://github.com/hneemann/Digital]
+This is an 8 bit computer implemented with [Digital](https://github.com/hneemann/Digital)
 The assembler and microcode generator require python
+
+![screnshot](distribution/screenshot.png)
 
 ## Files
 * gr8bit_main.dig - Main file

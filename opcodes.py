@@ -6,18 +6,25 @@ Used later to construct microcode for each opcode
 
 '''
 NOOP = 0b0 # No pins active, non-operation
-HLT  = 0b1 << 0  # Halt the computer
+# HLT  = 0b1 << 0  # Halt the computer - DEPRECATED
+# Now special case, END on first step == HALT
+# pin 0 now free!
 CI   = 0b1 << 1  # PC Increment
-PCLI = 0b1 << 2  # PC 'low' load from bus - DEPRECATED
 AI   = 0b1 << 3  # Accumulator load from bus
 AO   = 0b1 << 4  # Accumulator write to bus
 MRLI = 0b1 << 5  # Memory Register Low load from bus
-ALUO = 0b1 << 6  # ALU Write to bus - DEPRECATED (done via ALS*)
 END  = 0b1 << 7  # END command, reset instruction step counter
 
+# OLD
 MSPC = 0b00 << 8 # Program Counter selected for addr bus
 MSMR = 0b01 << 8 # Full Mem register selected for addr bus
 MSZP = 0b10 << 8 # MRL and value 0x00 high written to addr bus, Zero Page ops
+MSSP = 0b11 << 8 # Stack Pointer low and value 0x01 high written to bus, Stack ops
+
+# NEW
+MSPC = 0b00 << 8 # Program Counter selected for addr bus
+MSMR = 0b01 << 8 # Full Mem register selected for addr bus
+MSXI = 0b10 << 8 # MRL/MRH added to value of X register. X Indexed ops
 MSSP = 0b11 << 8 # Stack Pointer low and value 0x01 high written to bus, Stack ops
 
 IRI  = 0b1 << 10 # Instruction Register In from bus
@@ -51,7 +58,6 @@ FO   = 0b1 << 23 # Flag Register output to bus
 
 MRHI = 0b1 << 24  # Memory Register High load from bus
 
-# Following are not yet implemented - just reserving them
 PCLO = 0b1 << 25  # PC 'low'  output to bus
 PCHO = 0b1 << 26  # PC 'high' output to bus
 
@@ -86,6 +92,10 @@ start_steps = [
     IRI|MO|CI # Instruction In, Mem Out, Increment PC
 ]
 end_steps = [
+    END
+]
+
+halt_steps = [
     END
 ]
 

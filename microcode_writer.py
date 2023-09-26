@@ -5,12 +5,14 @@ control word is 24 bytes
 up to 16 steps per instruction
 
 '''
-from opcodes import opCodes, start_steps, end_steps, MAX_STEPS, CONTROL_WORD_BYTES, MAX_OPCODES
+from opcodes import opCodes, start_steps, end_steps, halt_steps, MAX_STEPS, CONTROL_WORD_BYTES, MAX_OPCODES
 from helpers import hexdump, build_rom, write_rom
 
 
 def build_sequence(opcode=None):
-    if opcode:
+    if opcode && opcode == 'HLT':
+        steps_code_nested = halt_steps
+    elif opcode:
         steps_code_nested = [start_steps, opCodes[opcode][1], end_steps]
     else:
         # If getting an illegal opcode just skip it!

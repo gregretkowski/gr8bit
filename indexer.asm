@@ -1,5 +1,7 @@
-; fibo from ben eater sap1 adapted to my computer
-; https://theshamblog.com/programs-and-more-commands-for-the-ben-eater-8-bit-breadboard-computer/
+; Use to test X register addressing modes.
+
+#include fibo.asm
+
 #org 0x00
 xindex:
         0x00
@@ -8,8 +10,9 @@ yindex:
 
 #org 0x8000
 out:
-#org 0xfe00
-string: 'Hello, Fibo World!', 0
+#org 0xff00
+
+string: 'Hello, World!', 0
 mainprog:
         LDI 0x01
         STA xindex

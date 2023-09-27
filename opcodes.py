@@ -35,13 +35,14 @@ BO   = 0b1 << 14 # B register out to bus
 
 # ALS1,2,3
 ALSU = 0b000 << 15 # ALU Unselected
-ALSA = 0b001 << 15 # ALU Select Addition
-ALSS = 0b010 << 15 # ALU Select Subtraction
-ALSX = 0b011 << 15 # ALU Select X
-ALSX = 0b100 << 15 # ALU Select X
-ALSX = 0b101 << 15 # ALU Select X
-ALSX = 0b110 << 15 # ALU Select X
-ALSC = 0b111 << 15 # ALU Select Compare
+AL_AD = 0b001 << 15 # ALU Select Addition
+# ALSS = 0b010 << 15 # ALU Select Subtraction -DEPRECATED!
+AL_AN = 0b010 << 15 # ALU Select AND
+AL_OR = 0b011 << 15 # ALU Select OR
+AL_XR = 0b100 << 15 # ALU Select EOR
+AL_SL = 0b101 << 15 # ALU Select Bit-Shift-Left w/ carry
+AL_SR = 0b110 << 15 # ALU Select Bit-Shift-Right w/ carry
+AL_CP = 0b111 << 15 # ALU Select Compare
 
 # PCC1,2,3
 PCUU = 0b000 << 18 # PC Counters Unselected
@@ -109,25 +110,6 @@ opCodes = {
         MSMR,
         MSMR|AI|MO|END
     ]],
-
-    # Retr mem location into B reg, add A + B, store result in A.
-    'ADD': [ 0x02, [
-       MRLI|MO|CI,
-       MRHI|MO|CI,
-       MSMR,
-       MSMR|BI|MO,
-       ALSA|AI|END   
-    ]],
-    #SUB   03  0011 aaaa   Put content of memory address aaaa into register B,
-    #                      substract A - B, store result in register A.
-    # UNTESTED
-    'SUB': [ 0x03, [
-       MRLI|MO|CI,
-       MRHI|MO|CI,
-       MSMR,
-       MSMR|BI|MO,
-       ALSS|AI|END 
-    ]],
     #  0100 aaaa   Store contents of register A at memory address aaaa.
     'STA': [ 0x04, [
         MRLI|MO|CI,
@@ -139,6 +121,68 @@ opCodes = {
     'LDI': [ 0x05, [
         AI|MO|CI|END,
     ]],
+
+    #####
+    # ALU OPS
+    #####
+    
+    # Retr mem location into B reg, add A + B, store result in A.
+    'ADD': [ 0x02, [
+       MRLI|MO|CI,
+       MRHI|MO|CI,
+       MSMR,
+       MSMR|BI|MO,
+       AL_AD|AI|END   
+    ]],
+    'AND': [ 0x18, [
+       MRLI|MO|CI,
+       MRHI|MO|CI,
+       MSMR,
+       MSMR|BI|MO,
+       AL_AN|AI|END   
+    ]],
+    'ORA': [ 0x19, [
+       MRLI|MO|CI,
+       MRHI|MO|CI,
+       MSMR,
+       MSMR|BI|MO,
+       AL_OR|AI|END 
+    ]],
+    'XOR': [ 0x1A, [
+       MRLI|MO|CI,
+       MRHI|MO|CI,
+       MSMR,
+       MSMR|BI|MO,
+       AL_XR|AI|END 
+    ]],
+    'ASL': [ 0x1B, [
+       MRLI|MO|CI,
+       MRHI|MO|CI,
+       MSMR,
+       MSMR|BI|MO,
+       AL_SL|AI|END    
+    ]],
+    'ASR': [ 0x1C, [
+       MRLI|MO|CI,
+       MRHI|MO|CI,
+       MSMR,
+       MSMR|BI|MO,
+       AL_SR|AI|END    
+    ]],
+    #
+    #SUB   03  0011 aaaa   Put content of memory address aaaa into register B,
+    #
+    # substract A - B, store result in register A.
+    # UNTESTED
+    #'SUB': [ 0x03, [
+    #   MRLI|MO|CI,
+    #   MRHI|MO|CI,
+    #   MSMR,
+    #   MSMR|BI|MO,
+    #   ALSS|AI|END 
+    #]],
+    #'''
+
     # 0110 aaaa   Unconditional jump. Set program counter (PC) to aaaa,
     'JMP': [ 0x06, [
         BI|MO|CI,
@@ -150,7 +194,7 @@ opCodes = {
         MRLI|MO|CI,
         MSMR,
         MSMR|BI|MO,
-        ALSC|AI|END
+        AL_CP|AI|END
     ]],
     # Branch if zero/equal flag set
     'BEQ':  [ 0x09, [
@@ -184,9 +228,6 @@ opCodes = {
     ]],
     # jsr / rts jump to subroutine and return from subroutine ( stack stuff! )
     'JSR': [ 0x0D, [
-        # push flags, low addr byte, high addr byte
-        SPO|MRLI,           
-        MSSP|FO|MI|SPU,
         SPO|MRLI,
         MSSP|PCLO|MI|SPU,
         SPO|MRLI,
@@ -197,30 +238,70 @@ opCodes = {
         PCHU|MO|CI,
         BO|PCLU|END
     ]],
+    
+    #'RTS': [ 0x0E, [
+    #    # pull high addr byte, low addr byte, flags
+    #    SPD,
+    #    SPO|MRLI,
+    #    PCHU|MO|SPD|MSSP,
+    #    SPO|MRLI,
+    #    PCLU|MO|SPD|MSSP,
+    #    SPO|MRLI,
+    #    FI|MO|MSSP, # This stack spot is now 'free' to be written to
+    #    CI,         # Tick forward past the 2 addrs that held the jsr addr
+    #    CI|END,     # We can then resume executing!
+    #]],
+    
+
+    # Return from a subroutine, preserve flags (caller may need them)
+    # Turns out we need to use subroutines for several math ops, and
+    # need to preserve the carry flag back to the caller
     'RTS': [ 0x0E, [
         # pull high addr byte, low addr byte, flags
         SPD,
         SPO|MRLI,
         PCHU|MO|SPD|MSSP,
-        SPO|MRLI,
-        PCLU|MO|SPD|MSSP,
-        SPO|MRLI,
-        FI|MO|MSSP, # This stack spot is now 'free' to be written to
-        CI,         # Tick forward past the 2 addrs that held the jsr addr
-        CI|END,     # We can then resume executing!
-    ]],
+        SPO|MRLI, 
+        PCLU|MO|MSSP, # This stack spot is now 'free' to be written to
+        CI, # Tick forward past the 2 addrs that held the jsr addr
+        CI|END # We skip reading/writing the stack to flags in this one
+    ]],  
     #
     # X Register operations - X used for indexed memory ops
     #
-    'TAX': [ 0x10, [HLT]],
-    'TXA': [ 0x11, [HLT]],
-    'INX': [ 0x12, [HLT]],
-    'DEX': [ 0x13, [HLT]],
+    'TAX': [ 0x10, [
+        AO|XI|END
+    ]],
+    'TXA': [ 0x11, [
+        XO|AI|END
+    ]],
+    'INX': [ 0x12, [
+        XU|END
+    ]],
+    'DEX': [ 0x13, [
+        XD|END
+    ]],
     # Load/Store the Acc at memory indexed by X
-    'LAX': [ 0x16, [HLT]],
-    'SAX': [ 0x17, [HLT]],
-
-    # Halt the computer    
-    'HLT': [ 0x1F, [HLT]],
+    'LAX': [ 0x16, [
+        MRLI|MO|CI,
+        MRHI|MO|CI,
+        MSXI,
+        MSXI|AI|MO|END
+    ]],
+    'SAX': [ 0x17, [
+        MRLI|MO|CI,
+        MRHI|MO|CI,
+        MSXI,
+        MSXI|MI|AO|END
+    ]],
+    # transfer flags regs to/from accumulator
+    'TFA': [ 0x1D, [
+       FO|AI|END
+    ]],
+    'TAF': [ 0x1E, [
+       AO|FI|END
+    ]],
+    # Halt the computer - NOTE specially handled in microcode_writer!    
+    'HLT': [ 0x1F, []],
 }
 

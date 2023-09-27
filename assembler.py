@@ -2,7 +2,11 @@
 
 '''
 TODO:
-Set to turbo syntax
+
+IF I need it - support expressions, ex
+   0x00+0x01, labelfoo+0b00000001
+
+IF I want to switch to turbo syntax
   http://turbo.style64.org/docs/turbo-macro-pro-tmpx-syntax
   $ (hex) % (bin) 'a' (string text)
   *=
@@ -76,6 +80,24 @@ class Gr8Assembler:
         return lines, line_ids
 
 
+    def tokenize_line(self,line_string):
+        ''' returns an array of numbers - fixes byte order '''
+        line_string = line_string.replace(',', ' ')
+        tokens = line_string.split()
+        results = []
+        for idx,x in enumerate(tokens):
+            if x.find('0x') == 0:
+                # Bug doesnt handle odd numbers beyond 1.
+                just_numbers = tokens[idx][2:]
+                #split_tokens = [int("0x"+just_numbers[i:i+2],0) for i in range(0, len(just_numbers), 2)]
+                split_tokens = [("0x"+just_numbers[i:i+2]) for i in range(0, len(just_numbers), 2)]
+                split_tokens.reverse()
+                for t in split_tokens:
+                    results.append(t)
+            else:
+                results.append(int(x,0))
+        return results
+
     def parse_lines(self,lines,line_ids):
         # This function derived from:
         # https://github.com/slu4coder/Minimal-UART-CPU-System/blob/main/Python%20Assembler/asm.py
@@ -100,7 +122,7 @@ class Gr8Assembler:
         # OUT OF OR IN  CONNECTION WITH  THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
         # SOFTWARE.
         # -------------------------------------------------------------------------------
-        lineinfo, lineadr, labels = [], [], {}
+        lineinfo, lineadr, labels, var_labels = [], [], {}, {}
         LINEINFO_NONE, LINEINFO_ORG, LINEINFO_BEGIN, LINEINFO_END = 0x00000, 0x10000, 0x20000, 0x40000
         #
         #
@@ -134,8 +156,22 @@ class Gr8Assembler:
                 lines[i] = (lines[i][0:k] + rest).strip()   # join everything before and after the #org ... statement
 
             if lines[i].find(':') != -1:
-                labels[lines[i][:lines[i].find(':')]] = i   # put label with it's line number into dictionary
+                # Give it a special name!
+                label_name = "@@addr_" + lines[i][:lines[i].find(':')]
+                #labels[label_name] = i   # put label with it's line number into dictionary
+                labels[label_name] = [i, '0x@@']
                 lines[i] = lines[i][lines[i].find(':')+1:]  # cut out the label
+
+            # Handle value assignment of labels things with '=' are labels that are constants!
+            k = lines[i].find('=')
+            if (k != -1):
+                var_label  = lines[i][:k].strip()
+                value_str =  lines[i][k+1:].strip()
+
+                labels[var_label] = self.tokenize_line(value_str)
+                # Must remove this line from the listing. yah?
+                lines[i] = ""
+
 
             lines[i] = lines[i].split()                     # now split line into list of bytes (omitting whitepaces)
 
@@ -143,13 +179,20 @@ class Gr8Assembler:
                 #if "0x0302" == lines[i][j]:
                 #    print(lines[i][j])
                 #    raise("found the val!")
-                try: lines[i][j] = str(opCodes[lines[i][j]][0])     # try replacing mnemonic with opcode
+                old_line = lines[i]
+                #print(f"Looking at '{old_line}' on line {i+1} token {j+1}")
+                try:
+                    #old_line = lines[i][j]
+                    #print(opCodes.keys())
+                    lines[i][j] = str(opCodes[lines[i][j]][0])     # try replacing mnemonic with opcode
+                    #print(f"Found opcode '{old_line}' on line {i+1}")
                 except: 
                     if lines[i][j].find('0x') == 0 and len(lines[i][j]) > 4:    # replace '0xWORD' with 'LSB MSB'
                         val = int(lines[i][j], 16)
+                        # strip out the LSB, make it the value in the current list index.
                         lines[i][j] = str(val & 0xff)
-                        if not eight_bit_addresses:
-                            lines[i].insert(j+1, str((val>>8) & 0xff))
+                        # Insert the next value of a 2-byte string - in a new location in the list of lines.
+                        lines[i].insert(j+1, str((val>>8) & 0xff))
                     #elif lines[i][j].find('0b') == 0 and len(lines[i][j]) > 4:
 
         #
@@ -166,14 +209,26 @@ class Gr8Assembler:
                     if e.find('+') != -1: e = e[0:e.find('+')]  # omit +/- expressions after a label
                     if e.find('-') != -1: e = e[0:e.find('-')]
                 try:
-                    labels[e]; lines[i].insert(j+1, '0x@@') # is this element a label? => add a placeholder for the MSB
+                    if "@@addr_"+e in labels.keys():
+                        e = "@@addr_"+e
+                    # is this element a label? add placeholders for any bits.
+                    labels[e]
+                    # is this element a label? => add a placeholder for any extra elements like MSB
+                    for x in range(len(labels[e])-1):
+                        lines[i].insert(j+1+x, '0x@@')
                 except: pass
             if lineinfo[i] & LINEINFO_ORG: adr = lineinfo[i] & 0xffff   # react to #org by resetting the address
             lineadr.append(adr);                            # save line start address
             adr += len(lines[i])                            # advance address by number of (byte) elements
 
-        for l in labels: labels[l] = lineadr[labels[l]]     # update label dictionary from 'line number' to 'address'
-
+        for l in labels:
+            #print(f"Processing label {l}")
+            if l.find("@@addr_") != -1:
+                labels[l] = lineadr[labels[l][0]] # update label dictionary from 'line number' to 'address'
+                #print(f"{l} -> {labels[l]}")
+        #
+        # PASS 3
+        #
         for i in range(len(lines)):                         # PASS 3: replace 'reference + placeholder' with 'MSB LSB'
             for j in range(len(lines[i])):
                 e = lines[i][j]; pre = ''; off = 0
@@ -181,17 +236,26 @@ class Gr8Assembler:
                     if e[0] == '<' or e[0] == '>': pre = e[0]; e = e[1:]
                     if e.find('+') != -1: off += int(e[e.find('+')+1:], 0); e = e[0:e.find('+')]
                     if e.find('-') != -1: off -= int(e[e.find('-')+1:], 0); e = e[0:e.find('-')]
+                #print(f"trying label for {e}")
                 try:
-                    adr = labels[e] + off
-                    if pre == '<': lines[i][j] = str(adr & 0xff)
-                    elif pre == '>': lines[i][j] = str((adr>>8) & 0xff)
-                    else:
-                        lines[i][j] = str(adr & 0xff)
-                        #if eight_bit_addresses:
-                        #    del lines[i][j+1]
-                        #    j+=1
-                        #else:
-                        lines[i][j+1] = str((adr>>8) & 0xff)
+                    #print(f"trying label for {e}")
+                    if "@@addr_"+e in labels.keys():
+                        e = "@@addr_"+e
+                    #if e.find("@@addr_") != -1: # This is an address label.
+                        adr = labels[e] + off
+                        #print(f"Processing label {e} values {labels[e]}")
+                        if pre == '<': lines[i][j] = str(adr & 0xff)
+                        elif pre == '>': lines[i][j] = str((adr>>8) & 0xff)
+                        else:
+                            lines[i][j] = str(adr & 0xff)
+                            #if eight_bit_addresses:
+                            #    del lines[i][j+1]
+                            #    j+=1
+                            #else:
+                            lines[i][j+1] = str((adr>>8) & 0xff)
+                    elif e in labels.keys(): # its a constant/variable label
+                        for x in range(len(labels[e])):
+                            lines[i][j+x] = labels[e][x]
                 except: pass
                 try: isinstance(lines[i][j], str) and int(lines[i][j], 0)                    # check if ALL elements are numeric
                 except:
@@ -209,8 +273,12 @@ class Gr8Assembler:
                     if insert: print(':' + insert); insert = ''
                     print('%04.4x' % (lineinfo[i] & 0xffff))
                 for e in lines[i]:
-                    #print(e)
-                    insert += ('%02.2x' % (int(e, 0) & 0xff)) + ' '
+                    print(f"{e} {e.__class__}")
+                    try:
+                        insert += ('%02.2x' % (int(e, 0) & 0xff)) + ' '
+                    except:
+                        print(f"Failed to do {e}")
+                        raise
                     if len(insert) >= 16*3 - 1: print(':' + insert); insert = ''
         if insert: print(':' + insert)
 

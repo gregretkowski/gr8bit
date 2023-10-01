@@ -89,6 +89,7 @@ BYTEORDER='little'
 # LOW bits are steps of microcode
 
 start_steps = [
+    # TODO - can this be done in all one step?
     MSPC, # Program counter select RAM location
     IRI|MO|CI # Instruction In, Mem Out, Increment PC
 ]
@@ -156,17 +157,9 @@ opCodes = {
        AL_XR|AI|END 
     ]],
     'ASL': [ 0x1B, [
-       MRLI|MO|CI,
-       MRHI|MO|CI,
-       MSMR,
-       MSMR|BI|MO,
        AL_SL|AI|END    
     ]],
     'ASR': [ 0x1C, [
-       MRLI|MO|CI,
-       MRHI|MO|CI,
-       MSMR,
-       MSMR|BI|MO,
        AL_SR|AI|END    
     ]],
     #
@@ -227,6 +220,8 @@ opCodes = {
         MSSP|AI|MO|END,
     ]],
     # jsr / rts jump to subroutine and return from subroutine ( stack stuff! )
+    # Note jsr/rts does not push flags ; this now needs to be done if desired
+    # by the calling process, TFA;PHA;JSR;PLA;TAF
     'JSR': [ 0x0D, [
         SPO|MRLI,
         MSSP|PCLO|MI|SPU,

@@ -10,8 +10,8 @@ from helpers import hexdump, build_rom, write_rom
 
 
 def build_sequence(opcode=None):
-    if opcode && opcode == 'HLT':
-        steps_code_nested = halt_steps
+    if opcode and opcode == 'HLT':
+        steps_code_nested = [halt_steps]
     elif opcode:
         steps_code_nested = [start_steps, opCodes[opcode][1], end_steps]
     else:

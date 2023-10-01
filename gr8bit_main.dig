@@ -40,7 +40,7 @@
         </entry>
         <entry>
           <string>Frequency</string>
-          <int>2147483647</int>
+          <int>2</int>
         </entry>
       </elementAttributes>
       <pos x="20" y="-840"/>
@@ -3268,12 +3268,12 @@
       <elementName>Splitter</elementName>
       <elementAttributes>
         <entry>
-          <string>Input Splitting</string>
-          <string>1,4</string>
-        </entry>
-        <entry>
           <string>mirror</string>
           <boolean>true</boolean>
+        </entry>
+        <entry>
+          <string>Input Splitting</string>
+          <string>1,4</string>
         </entry>
         <entry>
           <string>Output Splitting</string>
@@ -3497,12 +3497,12 @@
       <elementName>Splitter</elementName>
       <elementAttributes>
         <entry>
-          <string>Input Splitting</string>
-          <string>8</string>
-        </entry>
-        <entry>
           <string>mirror</string>
           <boolean>true</boolean>
+        </entry>
+        <entry>
+          <string>Input Splitting</string>
+          <string>8</string>
         </entry>
         <entry>
           <string>Output Splitting</string>

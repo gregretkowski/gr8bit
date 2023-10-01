@@ -46,7 +46,7 @@ subr:
         ; Our little subroutine - test if it works!
         LDI 0xAA
         STA out
-        RWF
+        RTS
         HLT ; shouldn't get here either.
 
 #org 0xfffc

@@ -15,9 +15,14 @@ keyread=0x8002
 
 
 mainprog:
+    ; LDI 'x'
+    ; CMP 'x'
+    ; HLT
     ; LDI 0x01 ; 0x05 0x00
     ; LDI 0x00
     ; HLT ; 0x1F
+    LDI 0x00
+    TAX
 mainloop:
 
     ; LDI 0x01       ; 0x05 0x00
@@ -31,7 +36,8 @@ mainloop:
     INX
     JMP mainloop
 mainloop_done:
-    JMP echo
+    JSR echo
+    JMP mainprog
 
 string: 'Greetings, Professor Falken.', 10, 0
 
@@ -51,7 +57,11 @@ echo_keyread:
     ; todo, add a done/escape key.
     STA sdout
     STA terminal
+    CMP 0x0a
+    BEQ echo_done
     JMP echo
+echo_done:
+    RTS
 
 std_lineout:
     ; prints a 0-terminated string to the terminal window.

@@ -184,12 +184,13 @@ opCodes = {
         BO|PCLU,
         END
     ]], 
-    # Compare A register with memory location - sets flags
+    # Compare A register with an immediate value - sets flags
     'CMP':  [ 0x08, [
-        MRLI|MO|CI,
-        # MSMR,
-        MSMR|BI|MO,
-        AL_CP|AI|END
+        #MRLI|MO|CI,
+        #MSMR,
+        BI|MO|CI,
+        AL_CP,
+        END
     ]],
     # Branch if zero/equal flag set
     'BEQ':  [ 0x09, [

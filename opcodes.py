@@ -117,11 +117,13 @@ opCodes = {
         MRLI|MO|CI,
         MRHI|MO|CI,
         # MSMR,
-        MSMR|MI|AO|END
+        MSMR|MI|AO,
+        END
     ]],
     # 0101 vvvv   Load 4 bit immediate value in register A (loads 'vvvv' in A).
     'LDI': [ 0x05, [
-        AI|MO|CI|END,
+        AI|MO|CI,
+        END
     ]],
 
     #####
@@ -271,10 +273,12 @@ opCodes = {
     # X Register operations - X used for indexed memory ops
     #
     'TAX': [ 0x10, [
-        AO|XI|END
+        AO|XI,
+        END
     ]],
     'TXA': [ 0x11, [
-        XO|AI|END
+        XO|AI,
+        END
     ]],
     'INX': [ 0x12, [
         XU|XO|END
@@ -295,6 +299,18 @@ opCodes = {
         # MSXI,
         MSXI|AI|MO|END
     ]],
+    
+    'SPX': [ 0x15, [
+        MRLI|MO|CI,
+        MRHI|MO|CI,
+        # MSMR,
+        MSMR|BI|MO|MINC,
+        MSMR|MRHI|MO,
+        MSMR|MRLI|BO,
+        # MSXI,
+        MSXI|AO|MI,
+        END
+    ]],  
     # Load/Store the Acc at memory indexed by X
     'LAX': [ 0x16, [
         MRLI|MO|CI,

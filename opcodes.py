@@ -9,6 +9,7 @@ NOOP = 0b0 # No pins active, non-operation
 # HLT  = 0b1 << 0  # Halt the computer - DEPRECATED
 # Now special case, END on first step == HALT
 # pin 0 now free!
+MINC = 0b1 << 0  # Memory Register Increment
 CI   = 0b1 << 1  # PC Increment
 AI   = 0b1 << 3  # Accumulator load from bus
 AO   = 0b1 << 4  # Accumulator write to bus
@@ -180,7 +181,8 @@ opCodes = {
     'JMP': [ 0x06, [
         BI|MO|CI,
         PCHU|MO|CI,
-        BO|PCLU|END
+        BO|PCLU,
+        END
     ]], 
     # Compare A register with memory location - sets flags
     'CMP':  [ 0x08, [
@@ -193,7 +195,9 @@ opCodes = {
     'BEQ':  [ 0x09, [
         BI|MO|CI,
         PCHE|MO|CI,
-        BO|PCLE|END
+        BO|PCLE,
+        # Don't know why but end cant be till here!
+        END
     ]],
     # Clear/reset the flags register
     'CLF':  [ 0x0A, [
@@ -203,7 +207,8 @@ opCodes = {
     'BCS':  [ 0x07, [
         BI|MO|CI,
         PCHC|MO|CI,
-        BO|PCLC|END
+        BO|PCLC,
+        END
     ]],
     # STACK OPS - note stack pointer points at next available
     # memory location.
@@ -271,10 +276,23 @@ opCodes = {
         XO|AI|END
     ]],
     'INX': [ 0x12, [
-        XU|END
+        XU|XO|END
     ]],
     'DEX': [ 0x13, [
-        XD|END
+        XD|XO|END
+    ]],
+    # get low/high addr pointer,
+    # set the mem addr to the address of that pointer
+    # and then load A from the data, indexed by X
+    'LPX': [ 0x14, [
+        MRLI|MO|CI,
+        MRHI|MO|CI,
+        MSMR,
+        MSMR|BI|MO|MINC,
+        MSMR|MRHI|MO,
+        MSMR|MRLI|BO,
+        MSXI,
+        MSXI|AI|MO|END
     ]],
     # Load/Store the Acc at memory indexed by X
     'LAX': [ 0x16, [

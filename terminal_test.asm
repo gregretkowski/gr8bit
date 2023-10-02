@@ -33,16 +33,23 @@ mainloop:
 mainloop_done:
     JMP echo
 
-string: 'Greetings, Professor Falken.', 0
+string: 'Greetings, Professor Falken.', 10, 0
 
 
 ; read from keyboard, echo to terminal
 ; BUG - one key is not read, but if you do twice quickly then the key is read and outputted
 echo:
-    LDA keyready
+    ; LDI 0x01
+    ; STA sdout
+    LDA keyready ; check if there is a key to read, if not (0) then poll again
     BEQ echo
+echo_keyread:
+    ; LDA 0x02
+    ; STA sdout
     LDA keyread
+    ; BEQ echo_keyread  ; sometimes the first one is a 0!
     ; todo, add a done/escape key.
+    STA sdout
     STA terminal
     JMP echo
 

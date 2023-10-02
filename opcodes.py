@@ -109,14 +109,14 @@ opCodes = {
     'LDA': [ 0x01, [
         MRLI|MO|CI,
         MRHI|MO|CI,
-        MSMR,
+        # MSMR,
         MSMR|AI|MO|END
     ]],
     #  0100 aaaa   Store contents of register A at memory address aaaa.
     'STA': [ 0x04, [
         MRLI|MO|CI,
         MRHI|MO|CI,
-        MSMR,
+        # MSMR,
         MSMR|MI|AO|END
     ]],
     # 0101 vvvv   Load 4 bit immediate value in register A (loads 'vvvv' in A).
@@ -132,28 +132,28 @@ opCodes = {
     'ADD': [ 0x02, [
        MRLI|MO|CI,
        MRHI|MO|CI,
-       MSMR,
+       # MSMR,
        MSMR|BI|MO,
        AL_AD|AI|END   
     ]],
     'AND': [ 0x18, [
        MRLI|MO|CI,
        MRHI|MO|CI,
-       MSMR,
+       # MSMR,
        MSMR|BI|MO,
        AL_AN|AI|END   
     ]],
     'ORA': [ 0x19, [
        MRLI|MO|CI,
        MRHI|MO|CI,
-       MSMR,
+       # MSMR,
        MSMR|BI|MO,
        AL_OR|AI|END 
     ]],
     'XOR': [ 0x1A, [
        MRLI|MO|CI,
        MRHI|MO|CI,
-       MSMR,
+       # MSMR,
        MSMR|BI|MO,
        AL_XR|AI|END 
     ]],
@@ -187,7 +187,7 @@ opCodes = {
     # Compare A register with memory location - sets flags
     'CMP':  [ 0x08, [
         MRLI|MO|CI,
-        MSMR,
+        # MSMR,
         MSMR|BI|MO,
         AL_CP|AI|END
     ]],
@@ -287,18 +287,18 @@ opCodes = {
     'LPX': [ 0x14, [
         MRLI|MO|CI,
         MRHI|MO|CI,
-        MSMR,
+        # MSMR,
         MSMR|BI|MO|MINC,
         MSMR|MRHI|MO,
         MSMR|MRLI|BO,
-        MSXI,
+        # MSXI,
         MSXI|AI|MO|END
     ]],
     # Load/Store the Acc at memory indexed by X
     'LAX': [ 0x16, [
         MRLI|MO|CI,
         MRHI|MO|CI,
-        MSXI,
+        # MSXI,
         MSXI|AI|MO|END
     ]],
     'SAX': [ 0x17, [

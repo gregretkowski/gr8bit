@@ -36,8 +36,13 @@ std_readline_keyread:
     STA terminal
     CMP 0x0a
     BEQ std_readline_done
+    CMP 0x08
+    BEQ std_readline_backspace
     SPX 0x0080
     INX
+    JMP std_readline_poll
+std_readline_backspace:
+    DEX
     JMP std_readline_poll
 std_readline_done:
     LDI 0x00

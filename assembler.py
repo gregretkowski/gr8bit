@@ -3,6 +3,9 @@
 '''
 TODO:
 
+Any way to validate opcode argument length???
+> amd < syntax doesnt work with variables
+
 IF I need it - support expressions, ex
    0x00+0x01, labelfoo+0b00000001
 
@@ -39,6 +42,8 @@ string:    'Hello, World!', 10, 0
 ptr:       0x0000
 
 '''
+# > is rather universal for the high byte while
+# < selects the low byte.
 
 # https://www.youtube.com/watch?v=rdKX9hzA2lU
 
@@ -254,8 +259,17 @@ class Gr8Assembler:
                             #else:
                             lines[i][j+1] = str((adr>>8) & 0xff)
                     elif e in labels.keys(): # its a constant/variable label
-                        for x in range(len(labels[e])):
-                            lines[i][j+x] = labels[e][x]
+                        # > is rather universal for the high byte
+                        if pre == '<' and len(labels[e]) == 2:
+                            lines[i][j] = labels[e][0]
+                            #lines[i][j] = str(adr & 0xff)
+                            
+                        elif pre == '>' and len(labels[e]) == 2:
+                            #lines[i][j] = str((adr>>8) & 0xff)
+                            lines[i][j] = labels[e][1]
+                        else:
+                            for x in range(len(labels[e])):
+                                lines[i][j+x] = labels[e][x]
                 except: pass
                 try: isinstance(lines[i][j], str) and int(lines[i][j], 0)                    # check if ALL elements are numeric
                 except:
@@ -273,7 +287,7 @@ class Gr8Assembler:
                     if insert: print(':' + insert); insert = ''
                     print('%04.4x' % (lineinfo[i] & 0xffff))
                 for e in lines[i]:
-                    print(f"{e} {e.__class__}")
+                    #print(f"{e} {e.__class__}")
                     try:
                         insert += ('%02.2x' % (int(e, 0) & 0xff)) + ' '
                     except:

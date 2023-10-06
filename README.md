@@ -1,6 +1,12 @@
 # GR 8bit Computer
 
-This is an 8 bit computer implemented with [Digital](https://github.com/hneemann/Digital)
+This is an 8 bit CPU / computer inspired by the architecture of the 65xx MOS processor
+family. It features an 8 bit data bus, 16 bit address space, a stack, an accumulator
+register, index register and a status flag register.
+
+The CPU is constrained to 32 control lines, and 32 instructions. 
+
+It is implemented with [Digital](https://github.com/hneemann/Digital)
 The assembler and microcode generator require python
 
 ![screnshot](distribution/screenshot.png)
@@ -13,6 +19,11 @@ The assembler and microcode generator require python
 * opcodes.py - defines all the opcodes and microcode for the system
 * *.hex various rom's needed for the system
 
+## LICENSES
+
+the assembler is based on another author's work - see license in the assembler file
+the charmap.rom file is from https://pom1.sourceforge.net/?page=downloads and so that rom and other derivitives are GPLv2 licensed
+All the rest here is my stuff and you can do with it what you will as long as you dont misrepresent me with whatever it is you do with it
 
 ## TODO
 

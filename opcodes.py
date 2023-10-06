@@ -9,20 +9,13 @@ NOOP = 0b0 # No pins active, non-operation
 # HLT  = 0b1 << 0  # Halt the computer - DEPRECATED
 # Now special case, END on first step == HALT
 # pin 0 now free!
-MINC = 0b1 << 0  # Memory Register Increment
+MINC = 0b1 << 0  # Memory Register Increment - for Indirect addressing!
 CI   = 0b1 << 1  # PC Increment
 AI   = 0b1 << 3  # Accumulator load from bus
 AO   = 0b1 << 4  # Accumulator write to bus
 MRLI = 0b1 << 5  # Memory Register Low load from bus
 END  = 0b1 << 7  # END command, reset instruction step counter
 
-# OLD
-MSPC = 0b00 << 8 # Program Counter selected for addr bus
-MSMR = 0b01 << 8 # Full Mem register selected for addr bus
-MSZP = 0b10 << 8 # MRL and value 0x00 high written to addr bus, Zero Page ops
-MSSP = 0b11 << 8 # Stack Pointer low and value 0x01 high written to bus, Stack ops
-
-# NEW
 MSPC = 0b00 << 8 # Program Counter selected for addr bus
 MSMR = 0b01 << 8 # Full Mem register selected for addr bus
 MSXI = 0b10 << 8 # MRL/MRH added to value of X register. X Indexed ops
@@ -37,7 +30,6 @@ BO   = 0b1 << 14 # B register out to bus
 # ALS1,2,3
 ALSU = 0b000 << 15 # ALU Unselected
 AL_AD = 0b001 << 15 # ALU Select Addition
-# ALSS = 0b010 << 15 # ALU Select Subtraction -DEPRECATED!
 AL_AN = 0b010 << 15 # ALU Select AND
 AL_OR = 0b011 << 15 # ALU Select OR
 AL_XR = 0b100 << 15 # ALU Select EOR
@@ -46,7 +38,7 @@ AL_SR = 0b110 << 15 # ALU Select Bit-Shift-Right w/ carry
 AL_CP = 0b111 << 15 # ALU Select Compare
 
 # PCC1,2,3
-PCUU = 0b000 << 18 # PC Counters Unselected
+PCUU = 0b000 << 18 # PC Counters Unselected (selects 'memory' registers)
 PCLU = 0b001 << 18 # PC Low in from bus, unconditional
 PCHU = 0b101 << 18 # PC Hi  in from bus, unconditional
 PCLE = 0b010 << 18 # PC Low in from bus, On Equal
@@ -55,7 +47,7 @@ PCLC = 0b011 << 18 # PC Low in from bus, On Carry
 PCHC = 0b111 << 18 # PC Hi  in from bus, On Carry
 
 FI   = 0b1 << 21 # Flag Register set from bus
-FC   = 0b1 << 22 # Flag Register clear
+FC   = 0b1 << 22 # Flag Register clear - (do I need this or shortcut it to be pushed from Acc?)
 FO   = 0b1 << 23 # Flag Register output to bus
 
 MRHI = 0b1 << 24  # Memory Register High load from bus
@@ -68,16 +60,10 @@ SPD  = 0b1 << 28 # Stack Register decrement
 SPO  = 0b1 << 29 # Stack Register out to bus
 
 # X Register
-XI = 0b1 << 2
-XO = 0b1 << 6
-XU = 0b1 << 30
-XD = 0b1 << 31
-
-# One is unused!
-# also could implement, if adding a bit: Neg, Ovf, various NOT's
-
-
-# These are a matrix of 2x2
+XI = 0b1 << 2 # X read/set from bus
+XO = 0b1 << 6 # X write value to bus
+XU = 0b1 << 30 # Increment X
+XD = 0b1 << 31 # Decrement X
 
 # The following drive the size and config of the control ROM
 MAX_STEPS = 16 # could I reduce this to 8?? - 16 makes it 4 bits a nice round number
@@ -105,14 +91,15 @@ halt_steps = [
 opCodes = {
     'NOP': [ 0x00, [
     ]],
-    # 0001 aaaa   Load contents of memory address aaaa into register A.
+    # LDA 0xAAAA - Direct load contents of memory address AAAA into register A.
+    # Affects flags N,Z
     'LDA': [ 0x01, [
         MRLI|MO|CI,
         MRHI|MO|CI,
         # MSMR,
         MSMR|AI|MO|END
     ]],
-    #  0100 aaaa   Store contents of register A at memory address aaaa.
+    #  STA 0xAAAA - Store contents of register A at memory address aaaa.
     'STA': [ 0x04, [
         MRLI|MO|CI,
         MRHI|MO|CI,
@@ -120,7 +107,7 @@ opCodes = {
         MSMR|MI|AO,
         END
     ]],
-    # 0101 vvvv   Load 4 bit immediate value in register A (loads 'vvvv' in A).
+    # LDI 0xVV - Load 4 bit immediate value in register A (loads 'VV' in A).
     'LDI': [ 0x05, [
         AI|MO|CI,
         END
@@ -165,19 +152,6 @@ opCodes = {
     'ASR': [ 0x1C, [
        AL_SR|AI|END    
     ]],
-    #
-    #SUB   03  0011 aaaa   Put content of memory address aaaa into register B,
-    #
-    # substract A - B, store result in register A.
-    # UNTESTED
-    #'SUB': [ 0x03, [
-    #   MRLI|MO|CI,
-    #   MRHI|MO|CI,
-    #   MSMR,
-    #   MSMR|BI|MO,
-    #   ALSS|AI|END 
-    #]],
-    #'''
 
     # 0110 aaaa   Unconditional jump. Set program counter (PC) to aaaa,
     'JMP': [ 0x06, [
@@ -203,6 +177,7 @@ opCodes = {
         END
     ]],
     # Clear/reset the flags register
+    # NOTE: May just delete this as LDI 0x00 -> TAF accomplishes same!
     'CLF':  [ 0x0A, [
         FC|END
     ]],
@@ -241,22 +216,9 @@ opCodes = {
         PCHU|MO|CI,
         BO|PCLU|END
     ]],
-    
-    #'RTS': [ 0x0E, [
-    #    # pull high addr byte, low addr byte, flags
-    #    SPD,
-    #    SPO|MRLI,
-    #    PCHU|MO|SPD|MSSP,
-    #    SPO|MRLI,
-    #    PCLU|MO|SPD|MSSP,
-    #    SPO|MRLI,
-    #    FI|MO|MSSP, # This stack spot is now 'free' to be written to
-    #    CI,         # Tick forward past the 2 addrs that held the jsr addr
-    #    CI|END,     # We can then resume executing!
-    #]],
-    
 
-    # Return from a subroutine, preserve flags (caller may need them)
+
+    # Return from a subroutine, leaves flags as-is (caller may need them)
     # Turns out we need to use subroutines for several math ops, and
     # need to preserve the carry flag back to the caller
     'RTS': [ 0x0E, [
@@ -272,23 +234,29 @@ opCodes = {
     #
     # X Register operations - X used for indexed memory ops
     #
+    # TAX - Transfer contents of Acc to X register
     'TAX': [ 0x10, [
         AO|XI,
         END
     ]],
+    # TXA - Transfer contents of X register to Acc
     'TXA': [ 0x11, [
         XO|AI,
         END
     ]],
+    # INX - Increment X register
     'INX': [ 0x12, [
         XU|XO|END
     ]],
+    # DEX - Decrement X register
     'DEX': [ 0x13, [
         XD|XO|END
     ]],
     # get low/high addr pointer,
     # set the mem addr to the address of that pointer
     # and then load A from the data, indexed by X
+    # LPX 0xPPPP - Load Acc with value from INDIRECT (pointer) address, indexed by X register.
+    # ex. 'LPX 0x0080' - if $80 = 00 and $81 = 10, and X = $05 - would get contents from $1000+5
     'LPX': [ 0x14, [
         MRLI|MO|CI,
         MRHI|MO|CI,
@@ -299,7 +267,7 @@ opCodes = {
         # MSXI,
         MSXI|AI|MO|END
     ]],
-    
+    # SPX 0xPPPP - Save Acc value to INDIRECT (pointer) address, indexed by X register.
     'SPX': [ 0x15, [
         MRLI|MO|CI,
         MRHI|MO|CI,
@@ -310,7 +278,17 @@ opCodes = {
         # MSXI,
         MSXI|AO|MI,
         END
-    ]],  
+    ]],
+    # JPX xPPPP - Jump to INDIRECT (pointer) address, indexed by X register.
+    'JPX': [ 0x0F, [
+        MRLI|MO|CI,
+        MRHI|MO|CI,
+        # MSMR,
+        MSMR|BI|MO|MINC,
+        PCHU|MO,
+        BO|PCLU,
+        END
+    ]],
     # Load/Store the Acc at memory indexed by X
     'LAX': [ 0x16, [
         MRLI|MO|CI,

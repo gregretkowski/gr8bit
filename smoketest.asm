@@ -9,6 +9,7 @@ sdout=0x8000
 
 #org 0xF000
 mainprog:
+
     LDI 0x01
     STA sdout
     ; now test jump - we already know this works if we got this far
@@ -84,7 +85,6 @@ past_lpx:
 past_spx:
     STA sdout
 
-; !!! test JPX opcode here!
 
 
 ; test BCS (Branch/Carry), clear flags, flags transfers
@@ -232,7 +232,41 @@ past_asr_c:
     LDI 0x22
     STA sdout
 
- 
+; Test LDX, STX
+    LDI 0x24
+    STA 0x0013
+    LDX 0x0013
+    TXA
+    CMP 0x24
+    BEQ past_ldx
+    JMP fail
+past_ldx:
+    STA sdout
+
+    STX 0x0014
+    LDA 0x0014
+    CMP 0x24
+    BEQ past_stx
+    JMP fail
+past_stx:
+    LDI 0x25
+    STA sdout
+
+
+; test JPX opcode here!
+    LDI 0x00
+    TAX
+    LDI <past_jpx
+    STA 0x0040
+    LDI >past_jpx
+    STA 0x0041
+    ; HLT
+    JPX 0x0040
+    JMP fail
+past_jpx:
+    LDI 0x23
+    STA sdout
+
      LDI 0xdd
      STA sdout
      HLT ; halt after last test.    

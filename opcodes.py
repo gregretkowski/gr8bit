@@ -76,7 +76,6 @@ BYTEORDER='little'
 # LOW bits are steps of microcode
 
 start_steps = [
-    # TODO - can this be done in all one step?
     MSPC, # Program counter select RAM location
     IRI|MO|CI # Instruction In, Mem Out, Increment PC
 ]
@@ -89,8 +88,8 @@ halt_steps = [
 ]
 
 opCodes = {
-    'NOP': [ 0x00, [
-    ]],
+    #'NOP': [ 0x00, [
+    #]],
     # LDA 0xAAAA - Direct load contents of memory address AAAA into register A.
     # Affects flags N,Z
     'LDA': [ 0x01, [
@@ -177,8 +176,9 @@ opCodes = {
         END
     ]],
     # Clear/reset the flags register
-    # NOTE: May just delete this as LDI 0x00 -> TAF accomplishes same!
-    'CLF':  [ 0x0A, [
+    # NOTE - inst 0x00 needs to be single-step low-side-effect
+    # instruction for the PC/IR to coldboot properly.
+    'CLF':  [ 0x00, [
         FC|END
     ]],
     # Branch if carry flag set
@@ -252,6 +252,21 @@ opCodes = {
     'DEX': [ 0x13, [
         XD|XO|END
     ]],
+    # LDX 0xAAAA - Direct load contents of memory address AAAA into register X.
+    'LDX': [ 0x1E, [
+        MRLI|MO|CI,
+        MRHI|MO|CI,
+        # MSMR,
+        MSMR|XI|MO|END
+    ]],
+    #  STX 0xAAAA - Store contents of register X at memory address aaaa.
+    'STX': [ 0x03, [
+        MRLI|MO|CI,
+        MRHI|MO|CI,
+        # MSMR,
+        MSMR|MI|XO,
+        END
+    ]],
     # get low/high addr pointer,
     # set the mem addr to the address of that pointer
     # and then load A from the data, indexed by X
@@ -281,12 +296,12 @@ opCodes = {
     ]],
     # JPX xPPPP - Jump to INDIRECT (pointer) address, indexed by X register.
     'JPX': [ 0x0F, [
+        # Memory register, set to addrs that contain pointer.
         MRLI|MO|CI,
         MRHI|MO|CI,
-        # MSMR,
-        MSMR|BI|MO|MINC,
-        PCHU|MO,
-        BO|PCLU,
+        # read it in, straight to the program counter L/H
+        MSXI|PCLU|MO|MINC,
+        MSXI|PCHU|MO,
         END
     ]],
     # Load/Store the Acc at memory indexed by X
@@ -306,10 +321,9 @@ opCodes = {
     'TFA': [ 0x1D, [
        FO|AI|END
     ]],
-    'TAF': [ 0x1E, [
+    'TAF': [ 0x0A, [
        AO|FI|END
     ]],
     # Halt the computer - NOTE specially handled in microcode_writer!    
     'HLT': [ 0x1F, []],
 }
-

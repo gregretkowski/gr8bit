@@ -22,6 +22,10 @@ starts executing commands starting at address
 executing command starting at address 0xFFFC .
 Typically you'd have a 'JMP mainprog' there.
 
+The CPU starts paused - the man/auto button starts the
+clock running. Alternatively you can manually step
+via the tick button.
+
 ### Accumulator Register
 
 The Accumulator (Acc) is the main register in the
@@ -177,6 +181,7 @@ All the rest here is my stuff and you can do with it what you will as long as yo
 
 * Maybe some term/kbd bugs?
 * Get wozmon ported over
+* bug with tick, cold boot doesnt work if clock is not dead slow
 
 ## Other Notes
 

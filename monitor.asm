@@ -1,7 +1,7 @@
 ; monitor
 
 
-#include stdlib.asm
+; #ixnclude stdlib.asm
 
 #org 0xF000
 mainprog:
@@ -26,13 +26,14 @@ MODE            = 0x002B           ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
 terminal        = 0x8001
 keyready        = 0x8003
 keyread         = 0x8002
+sdisplay        = 0x8000
 ; Other Variables
 
 IN              = 0x0200         ;  Input buffer to $027F
 
 inbuf             = 0x0030       ; pointer to the input buffer
 inbufh            = 0x0031
-
+NEGMASK           = 0x0035
 XTR               = 0x0041       ; Place to store X register when handling text buffer
 XMR               = 0x0042       ; Place to store X register when handling memory locations
 
@@ -43,12 +44,15 @@ XAML_M = 0x0023
 
 
 
+
 RESET:
                 LDI <IN
                 STA inbuf
                 LDI >IN
                 STA inbufh
-
+                LDI 0b10000000
+                STA NEGMASK
+                TAX
                 
 
 ; Handle text input
@@ -57,7 +61,13 @@ NOTCR:          CMP 8           ; Backspace?
                 CMP 27          ; ESC?
                 BEQ ESCAPE      ; Yes.
                 INX             ; Advance text index.
+                TXA
+                CMP 0b10000001
+                ; If this is our first time continue here TODO - otherwise
+                ; we jump down to nextchar - Greg
                 ; BPL NEXTCHAR  ; Auto ESC if > 127.
+                BEQ ESCAPE
+                JMP NEXTCHAR
 ESCAPE:         LDI '\'         ; "\".
                 JSR ECHO        ; Output it.
 GETLINE:        LDI 10          ; CR.
@@ -65,26 +75,34 @@ GETLINE:        LDI 10          ; CR.
                 LDI 0x01        ; Initialize text index.
                 TAX
 BACKSPACE:      DEX             ; Back up text index.
-                ; BMI GETLINE     ; Beyond start of line, reinitialize.
+                ; - BMI GETLINE     ; Beyond start of line, reinitialize.
+                TFA
+                ORA NEGMASK
+                CMP 0b10000000
+                BEQ GETLINE     ; Beyond start of line, reinitialize.
 NEXTCHAR:       LDA keyready    ; Key ready?
                 CMP 0x00
                 BEQ NEXTCHAR    ; Loop until ready.
                 LDA keyread     ; Load character. B7 should be ‘1’.
                 SPX inbuf       ; Add to text buffer.
                 JSR ECHO        ; Display character.
-                CMP '\n'        ; CR?
+                CMP 10          ; CR?
                 BEQ DONEINPUT   ; Yes.
+                TXA
+                STA sdisplay
                 JMP NOTCR       ; No keep reading
 
 ; Drop though, got a CR! now we are processing the buffer
-DONEINPUT:
 
+DONEINPUT:
+                    
 ; Y reg is used as an index into the textstring we got
 ; X reg is used to interact with the mem location we are working with
 ; Acc is used for math scratch etc.
 
                 LDI 0xFF        ; Reset text index.
-                TAX
+                STA YSAV
+                ; TAX
                 LDA 0x00        ; For XAM mode.
                 TAX             ; 0->X.
                 ; todo are we mem reg or text reg here ^^^
@@ -238,3 +256,10 @@ ECHO:           STA terminal
         JMP mainprog
 
 ; %Run assembler.py monitor.asm 16k_rom.hex -s 0xc000 -l 16384
+
+
+; BMI is branch if negative bit set. How to do a BMI:
+; TFA
+; ORA 0b10000000
+; CMP 0b10000000
+; BEQ (bmi branch)

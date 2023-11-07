@@ -2440,6 +2440,16 @@ flags-setters</string>
       </elementAttributes>
       <pos x="560" y="1580"/>
     </visualElement>
+    <visualElement>
+      <elementName>Const</elementName>
+      <elementAttributes>
+        <entry>
+          <string>Value</string>
+          <long>0</long>
+        </entry>
+      </elementAttributes>
+      <pos x="1600" y="1060"/>
+    </visualElement>
   </visualElements>
   <wires>
     <wire>
@@ -2761,6 +2771,10 @@ flags-setters</string>
     <wire>
       <p1 x="940" y="1060"/>
       <p2 x="960" y="1060"/>
+    </wire>
+    <wire>
+      <p1 x="1600" y="1060"/>
+      <p2 x="1640" y="1060"/>
     </wire>
     <wire>
       <p1 x="1140" y="420"/>

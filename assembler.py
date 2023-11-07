@@ -72,6 +72,8 @@ class Gr8Assembler:
             line_stripped = line.strip()
             line_id = f"{filename} line {i}"
             
+            # BUG/FIXME: commenting out '#include' still includes the file!
+            # this is a bug.
             k = line.find('#include')
             if k != -1:                                 # interpret anything after #include as a filename
                 line = line[k+8:].strip().replace('\"', '').replace('\'', '')

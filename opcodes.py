@@ -160,6 +160,7 @@ opCodes = {
         END
     ]], 
     # Compare A register with an immediate value - sets flags
+    # Todo - should be address? Not sure!
     'CMP':  [ 0x08, [
         #MRLI|MO|CI,
         #MSMR,

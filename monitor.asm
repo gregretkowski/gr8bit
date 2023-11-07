@@ -22,6 +22,7 @@ L               = 0x0028           ;  Hex value parsing Low
 H               = 0x0029           ;  Hex value parsing High
 YSAV            = 0x002A           ;  Used to see if hex value is given
 MODE            = 0x002B           ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
+SCRATCH         = 0x0037           ; scratch for parsing hex digits
 
 terminal        = 0x8001
 keyready        = 0x8003
@@ -31,9 +32,8 @@ sdisplay        = 0x8000
 
 IN              = 0x0200         ;  Input buffer to $027F
 
-inbuf             = 0x0030       ; pointer to the input buffer
-inbufh            = 0x0031
-NEGMASK           = 0x0035
+; NEGMASK           = 0x0035
+; OVFMASK           = 0x0036
 XTR               = 0x0041       ; Place to store X register when handling text buffer
 XMR               = 0x0042       ; Place to store X register when handling memory locations
 
@@ -46,12 +46,7 @@ XAML_M = 0x0023
 
 
 RESET:
-                LDI <IN
-                STA inbuf
-                LDI >IN
-                STA inbufh
                 LDI 0b10000000
-                STA NEGMASK
                 TAX
                 
 
@@ -95,80 +90,94 @@ NEXTCHAR:       LDA keyready    ; Key ready?
 ; Drop though, got a CR! now we are processing the buffer
 
 DONEINPUT:
-                    
-; Y reg is used as an index into the textstring we got
-; X reg is used to interact with the mem location we are working with
-; Acc is used for math scratch etc.
 
-                LDI 0xFF        ; Reset text index.
-                STA YSAV
-                ; TAX
-                LDA 0x00        ; For XAM mode.
-                TAX             ; 0->X.
-                ; todo are we mem reg or text reg here ^^^
-SETSTOR:        ASL             ; Leaves $7B if setting STOR mode.
-SETMODE:        STA MODE        ; $00=XAM $7B=STOR $AE=BLOK XAM
-BLSKIP:         LDX XTR         ; Advance text index.
-                INX
-NEXTITEM:       LPX inbuf       ; Get character.
+; Setup
+                LDI 0x00
+                TAX
+
+; Main stuff
+                DEX
+BLSKIP:         INX
+NEXTITEM:
+                LPX inbuf
+                
+                ; Code to check . / : / CR here!
                 CMP 10          ; CR?
                 BEQ GETLINE     ; Yes, done this line.
                 CMP '.'         ; "."?
-                BCS X_BCC_BSK   ; Skip delimiter.
-                JMP BLSKIP
-X_BCC_BSK:
-                BEQ SETMODE     ; Yes. Set STOR mode.
+                BEQ SETM_BLOCK     ; Yes. Set STOR mode.
                 CMP ':'         ; ":"?
-                BEQ SETSTOR     ; Yes. Set STOR mode.
+                BEQ SETM_STOR     ; Yes. Set STOR mode.
                 CMP 'R'         ; "R"?
                 BEQ RUN         ; Yes. Run user program.
-                STX XTR
-                LDX XMR
-                STX L           ; $00-> L.
-                STX H           ; and H.
-                STX XMR
-                LDX XTR
-                STX YSAV        ; Save Y for comparison.
-NEXTHEX:        LPX inbuf       ; Get character for hex test.
-                XOR 0xB0        ; Map digits to $0-9.
+                
+; convert from ascii string to binary/hex value
+NEXTHEX:        ; LPX inbuf       ; Get character for hex test.
+                XOR ASCIIZERO     ; Map digits to $0-9.
                 CMP 0x0A        ; Digit?
-                BCS X_BCC_DIG
+                ; JMP DEBUG
+                BCS NOT_DIGIT
                 JMP DIG         ; Yes.
-X_BCC_DIG:
-                ADD 0x88        ; Map letter "A"-"F" to $FA-FF.
-                CMP 0xFA        ; Hex letter?
-                BCS X_BCC_NOTHEX
-                JMP NOTHEX      ; No, character not hex.
-X_BCC_NOTHEX:
-DIG:            ASL
+NOT_DIGIT:
+                CLF
+                ADD ASCIIAOFF     ; Map letter "A"-"F" to $FA-FF.
+                BCS DIG           ; carry set, we can go to dig.
+                ADD ASCIILCO
+                ; TODO: If we arent a hexnumber we need to error out!!!
+                ; the carry flag is unset if we are a valid digit
+                ; This code doesnt seem to work shrug
+                CMP 0x10
+                BCS INVALID ; really we just start over/RESET
+                
+
+; Shift acc so that the value is the high bit
+DIG:            CLF
+                ASL
                 ASL             ; Hex digit to MSD of A.
                 ASL
                 ASL
-                STX XTR
-                LDX 0x04        ; Shift count. (?)
-                
+                ; JMP DEBUG
+
+
+; shifts 4 chars into low/high byte - initial setup
+                STX XTR         ; Switching X for loop counting, store Text index
+                PHA
+                LDI 0x03 ; Shift count.
+                TAX
+                PLA     
+                CLF
+
+; 4 times, shift 'scratch' into low, shift low into high.. 
 HEXSHIFT:       ASL             ; Hex digit left, MSB to carry.
+                STA SCRATCH
+
                 LDA L
                 ASL             ; Rotate into LSD.
                 STA L
                 LDA H
                 ASL             ;  Rotate into MSD’s.
                 STA H
+                LDA SCRATCH
                 DEX             ; Done 4 shifts?
+                ;HLT
                 BEQ X_BNE_HS
                 JMP HEXSHIFT    ; No, loop.
 X_BNE_HS:
-                STX XMR
+; at the end, put out info on some display!!
                 LDX XTR
-                INX             ; Advance text index.
-                BEQ X_BNE_NH
-                JMP NEXTHEX     ; Always taken. Check next char for hex.
-X_BNE_NH:
-NOTHEX:         LDI 0x00        ; Check if L, H empty (no hex digits).
-                CMP YSAV
-                BEQ ESCAPE      ; Yes, generate ESC sequence.
-;          -      BIT MODE        ; Test MODE byte.
-;          -      BVC NOTSTOR     ;  B6=0 STOR 1 for XAM & BLOCK XAM
+                ; JMP BLSKIP ; going to read next char
+                
+                ; FALLTHOUGH - Code Continues.
+
+                ; JMP DEBUG
+
+; NOW we start doing stuff examine/store etc
+                
+                ; check 'store' bit, compared to mode.
+                ; This is where we store a thing
+                LDA MODE
+                AND OVFMASK
+                BEQ NOTSTOR
                 LDA L           ; LSD’s of hex data.
                 LDX XMR
                 SPX STL         ; Store at current ‘store index’.
@@ -176,17 +185,29 @@ NOTHEX:         LDI 0x00        ; Check if L, H empty (no hex digits).
                 INX
                 STX STL
                 BEQ X_BNE_NEXTI
-                JMP NEXTITEM    ; Get next item. (no carry).
+                LDX XTR
+                JMP NEXTITEM    ; Get next item. (no carry).            
 X_BNE_NEXTI:
                 LDX STH         ; Add carry to ‘store index’ high order.
                 INX
                 STX STH
+                LDX XTR
 TONEXTITEM:     JMP NEXTITEM    ; Get next command item.
+
+
 RUN:            LDI 0x00        ; Run at current XAM index.
                 TAX
                 JPX XAML
 NOTSTOR:    ; -  BMI XAMNEXT     ; B7=0 for XAM, 1 for BLOCK XAM.
-                LDX 0x02        ; Byte count.
+                ; we continue below if we are in block-examine
+                ; otherwise jump to XAMNEXT
+                LDA MODE
+                ORA MODE
+                XOR MODE
+                BEQ XAMNEXT
+                LDI 0x02   ; setting x to 02 for to loop - then we access 
+                TAX        ; Byte count.
+                STX ???
                 
 SETADR:         LDX XMR
                 LPX L_M       ; Copy hex data to
@@ -229,6 +250,21 @@ MOD8CHK:        LDA XAML        ; Check low-order ‘examine index’ byte
                 AND 0x07        ; For MOD 8=0
                 JMP NXTPRNT     ; Always taken.
 
+
+SETM_BLOCK:
+                LDA MODE
+                AND NEGMASK
+                STA MODE
+                JMP BLSKIP
+
+SETM_STOR:
+                LDA MODE
+                AND OVFMASK
+                STA MODE
+                JMP BLSKIP
+                
+
+
 ; Functions to output to screen, incl conversion from value to ascii chars.
 PRBYTE:         PHA             ; Save A for LSD.
                 CLF             ; MSD to LSD position.
@@ -250,6 +286,20 @@ PRHEX:          AND 0x0F        ; Mask LSD for hex print.
 
 ECHO:           STA terminal
                 RTS
+INVALID:
+                LDI 0xFA
+DEBUG:
+                STA sdisplay
+                HLT
+
+; Constants for math use.
+ASCIIZERO: '0'
+ASCIIAOFF: 0x99
+ASCIILCO: 0x20
+OVFMASK: 0b01000000 ; STOR
+NEGMASK: 0b10000000 ; BLOCK
+inbuf: 0x0200
+ZEROTWO: 0x02
 
 
 #org 0xfffc

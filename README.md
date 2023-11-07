@@ -75,6 +75,13 @@ twos-complement using XOR and ADD.
 CMP: Compare the Accumulator to an immediate value. It mimics the
      6502 behavior setting the Neg, Zero, and Carry flag. If
      the values are equal Zero flag is set to '1'
+     
+|Compare Result|N|Z|C|
+|--------------|-|-|-|
+|  A < Memory  |X|0|0|
+|  A = Memory  |0|1|1|
+|  A > Memory  |X|0|1|
+X The N flag will be bit 7 of A - Memory
 
 ### Flow Control and Stack
 
@@ -182,6 +189,9 @@ All the rest here is my stuff and you can do with it what you will as long as yo
 * Maybe some term/kbd bugs?
 * Get wozmon ported over
 * bug with tick, cold boot doesnt work if clock is not dead slow
+* update opcodes/assember, detect when opcode does not have right argument size
+* converge register/register_sp to a single register file
+* refactor cpu into a single standalone file, for future use (verilog/fpga?)
 
 ## Other Notes
 

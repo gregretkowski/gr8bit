@@ -450,7 +450,7 @@ Set carry flag if carry is set on addition</string>
         <entry>
           <string>Testdata</string>
           <testData>
-            <dataString>clk fc OPSEL a_in b_in flags_peek bus_out
+            <dataString>clk fc OPSEL a_in b_in flags_peek alu_out
 # NV1B DIZC
 # Addition Tests
 C 0 1 0x00 0xff 0b00000000 0xff
@@ -724,7 +724,7 @@ C 0 0 0x12 0x34 0b00000000 X</dataString>
       <elementAttributes>
         <entry>
           <string>Label</string>
-          <string>bus_out</string>
+          <string>flags_out</string>
         </entry>
         <entry>
           <string>Bits</string>
@@ -1197,34 +1197,34 @@ C 0 0 0x12 0x34 0b00000000 X</dataString>
         <entry>
           <string>Testdata</string>
           <testData>
-            <dataString>clk fc fi OPSEL a_d x_d  bus_in a_in b_in  x_in    reg_set reg_in bus_out
+            <dataString>clk fc fi OPSEL a_din x_din  bus_in a_in b_in  x_in    reg_set reg_in flags_out
 # Test when nothing is set                                        
-C   0  0  0     0   0    0xff   0x001 0x02 0x03    0       X      X
+C   0  0  0     0     0    0xff   0x001 0x02 0x03    0       X      X
 
 # Test write to flags from bus
-C   0  1  0     0   0    0xff   0x001 0x02 0x03    1       0xff   X
-C   0  1  1     1   0    0xff   0x001 0x02 0x03    1       0xff   X
-C   0  1  0     0   1    0xff   0x001 0x02 0x03    1       0xff   X
+C   0  1  0     0     0    0xff   0x001 0x02 0x03    1       0xff   X
+C   0  1  1     1     0    0xff   0x001 0x02 0x03    1       0xff   X
+C   0  1  0     0     1    0xff   0x001 0x02 0x03    1       0xff   X
 
 # Clear reg for next test
-C   1  0  0     0   0    0xff   0x001 0x02 0x03    0       X      X
-C   1  0  0     0   0    0xff   0x001 0x02 0x03    0       X      X
+C   1  0  0     0     0    0xff   0x001 0x02 0x03    0       X      X
+C   1  0  0     0     0    0xff   0x001 0x02 0x03    0       X      X
 # Test Math Op
-C   0  0  1     0   0    0xff   0x01 0xff 0x03     1       0x03   X
-C   0  0  1     0   0    0xff   0x01 0xf0 0x03     1       0x00   X
+C   0  0  1     0     0    0xff   0x01 0xff 0x03     1       0x03   X
+C   0  0  1     0     0    0xff   0x01 0xf0 0x03     1       0x00   X
 
 # Clear reg for next test
-C   1  0  0     0   0    0xff   0x001 0x02 0x03    0       X      X
+C   1  0  0     0     0    0xff   0x001 0x02 0x03    0       X      X
 # Test accum Op
 # BUG expected: zero flag, actual: negative flag
-C   0  0  0     1   0    0xff   0x00 0x02 0x03    1       0x02    X
-C   0  0  0     1   1    0xff   0x00 0x02 0x03    1       0x02    X
+C   0  0  0     1     0    0xff   0x00 0x02 0x03    1       0x02    X
+C   0  0  0     1     1    0xff   0x00 0x02 0x03    1       0x02    X
 
 # Clear reg for next test
-C   1  0  0     0   0    0xff   0x001 0x02 0x03    0       X      X
+C   1  0  0     0     0    0xff   0x001 0x02 0x03    0       X      X
 # test X Op
-C   0  0  0     0   1    0xff   0x00 0x02 0xff    1       0x80    X
-C   0  0  0     0   1    0xff   0x00 0x02 0xff    1       0x80    X
+C   0  0  0     0     1    0xff   0x00 0x02 0xff    1       0x80    X
+C   0  0  0     0     1    0xff   0x00 0x02 0xff    1       0x80    X
 </dataString>
           </testData>
         </entry>
@@ -1736,7 +1736,7 @@ Right</string>
         <entry>
           <string>Testdata</string>
           <testData>
-            <dataString>clk fc fi OPSEL a_in        reg_set  reg_in     bus_out
+            <dataString>clk fc fi OPSEL a_in        reg_set  reg_in     alu_out
 # Test when nothing is set
 C   0  0  0     0b000000000  0       X          X
 C   1  0  0     0x000000000  0       X          X
@@ -1767,7 +1767,7 @@ C   0  0  0x06   0b00000000  1       0b10000000 0b10000000
         <entry>
           <string>Testdata</string>
           <testData>
-            <dataString>clk fc fi OPSEL a_in b_in reg_set reg_in     bus_out
+            <dataString>clk fc fi OPSEL a_in b_in reg_set reg_in     alu_out
 # Test when nothing is set
 C   0  0  0     0x00 0x00 0       X          X
 C   1  0  0     0x00 0x00 0       X          X
@@ -2469,44 +2469,6 @@ flags-setters</string>
       <pos x="280" y="1340"/>
     </visualElement>
     <visualElement>
-      <elementName>Tunnel</elementName>
-      <elementAttributes>
-        <entry>
-          <string>rotation</string>
-          <rotation rotation="2"/>
-        </entry>
-        <entry>
-          <string>NetName</string>
-          <string>fo</string>
-        </entry>
-      </elementAttributes>
-      <pos x="1780" y="840"/>
-    </visualElement>
-    <visualElement>
-      <elementName>Tunnel</elementName>
-      <elementAttributes>
-        <entry>
-          <string>rotation</string>
-          <rotation rotation="2"/>
-        </entry>
-        <entry>
-          <string>NetName</string>
-          <string>alu_out</string>
-        </entry>
-      </elementAttributes>
-      <pos x="1720" y="760"/>
-    </visualElement>
-    <visualElement>
-      <elementName>Multiplexer</elementName>
-      <elementAttributes>
-        <entry>
-          <string>Bits</string>
-          <int>8</int>
-        </entry>
-      </elementAttributes>
-      <pos x="1760" y="760"/>
-    </visualElement>
-    <visualElement>
       <elementName>Multiplexer</elementName>
       <elementAttributes>
         <entry>
@@ -2641,6 +2603,34 @@ flags-setters</string>
       </elementAttributes>
       <pos x="600" y="1340"/>
     </visualElement>
+    <visualElement>
+      <elementName>Out</elementName>
+      <elementAttributes>
+        <entry>
+          <string>Label</string>
+          <string>alu_out</string>
+        </entry>
+        <entry>
+          <string>Bits</string>
+          <int>8</int>
+        </entry>
+      </elementAttributes>
+      <pos x="1860" y="840"/>
+    </visualElement>
+    <visualElement>
+      <elementName>Tunnel</elementName>
+      <elementAttributes>
+        <entry>
+          <string>rotation</string>
+          <rotation rotation="2"/>
+        </entry>
+        <entry>
+          <string>NetName</string>
+          <string>alu_out</string>
+        </entry>
+      </elementAttributes>
+      <pos x="1820" y="840"/>
+    </visualElement>
   </visualElements>
   <wires>
     <wire>
@@ -2758,10 +2748,6 @@ flags-setters</string>
     <wire>
       <p1 x="920" y="780"/>
       <p2 x="960" y="780"/>
-    </wire>
-    <wire>
-      <p1 x="1800" y="780"/>
-      <p2 x="1820" y="780"/>
     </wire>
     <wire>
       <p1 x="420" y="140"/>
@@ -2922,10 +2908,6 @@ flags-setters</string>
     <wire>
       <p1 x="380" y="160"/>
       <p2 x="420" y="160"/>
-    </wire>
-    <wire>
-      <p1 x="1740" y="800"/>
-      <p2 x="1760" y="800"/>
     </wire>
     <wire>
       <p1 x="600" y="800"/>
@@ -3180,12 +3162,12 @@ flags-setters</string>
       <p2 x="1040" y="700"/>
     </wire>
     <wire>
-      <p1 x="1820" y="700"/>
-      <p2 x="1860" y="700"/>
-    </wire>
-    <wire>
       <p1 x="600" y="700"/>
       <p2 x="640" y="700"/>
+    </wire>
+    <wire>
+      <p1 x="1760" y="700"/>
+      <p2 x="1860" y="700"/>
     </wire>
     <wire>
       <p1 x="640" y="700"/>
@@ -3296,6 +3278,10 @@ flags-setters</string>
       <p2 x="700" y="200"/>
     </wire>
     <wire>
+      <p1 x="1820" y="840"/>
+      <p2 x="1860" y="840"/>
+    </wire>
+    <wire>
       <p1 x="1140" y="460"/>
       <p2 x="1160" y="460"/>
     </wire>
@@ -3314,6 +3300,10 @@ flags-setters</string>
     <wire>
       <p1 x="660" y="1740"/>
       <p2 x="840" y="1740"/>
+    </wire>
+    <wire>
+      <p1 x="260" y="720"/>
+      <p2 x="560" y="720"/>
     </wire>
     <wire>
       <p1 x="680" y="1360"/>
@@ -3342,10 +3332,6 @@ flags-setters</string>
     <wire>
       <p1 x="500" y="80"/>
       <p2 x="520" y="80"/>
-    </wire>
-    <wire>
-      <p1 x="260" y="720"/>
-      <p2 x="560" y="720"/>
     </wire>
     <wire>
       <p1 x="1580" y="1620"/>
@@ -3584,10 +3570,6 @@ flags-setters</string>
       <p2 x="540" y="880"/>
     </wire>
     <wire>
-      <p1 x="1740" y="880"/>
-      <p2 x="1760" y="880"/>
-    </wire>
-    <wire>
       <p1 x="760" y="880"/>
       <p2 x="780" y="880"/>
     </wire>
@@ -3634,10 +3616,6 @@ flags-setters</string>
     <wire>
       <p1 x="820" y="760"/>
       <p2 x="900" y="760"/>
-    </wire>
-    <wire>
-      <p1 x="1720" y="760"/>
-      <p2 x="1760" y="760"/>
     </wire>
     <wire>
       <p1 x="400" y="120"/>
@@ -3860,10 +3838,6 @@ flags-setters</string>
       <p2 x="540" y="900"/>
     </wire>
     <wire>
-      <p1 x="1820" y="700"/>
-      <p2 x="1820" y="780"/>
-    </wire>
-    <wire>
       <p1 x="1440" y="1240"/>
       <p2 x="1440" y="1440"/>
     </wire>
@@ -4064,10 +4038,6 @@ flags-setters</string>
       <p2 x="460" y="800"/>
     </wire>
     <wire>
-      <p1 x="1740" y="800"/>
-      <p2 x="1740" y="880"/>
-    </wire>
-    <wire>
       <p1 x="720" y="1580"/>
       <p2 x="720" y="1600"/>
     </wire>
@@ -4116,7 +4086,7 @@ flags-setters</string>
       <p2 x="1760" y="1420"/>
     </wire>
     <wire>
-      <p1 x="1760" y="880"/>
+      <p1 x="1760" y="700"/>
       <p2 x="1760" y="940"/>
     </wire>
     <wire>
@@ -4166,10 +4136,6 @@ flags-setters</string>
     <wire>
       <p1 x="500" y="780"/>
       <p2 x="500" y="800"/>
-    </wire>
-    <wire>
-      <p1 x="1780" y="800"/>
-      <p2 x="1780" y="840"/>
     </wire>
     <wire>
       <p1 x="760" y="700"/>

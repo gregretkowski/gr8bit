@@ -246,7 +246,13 @@ class CPU():
         return ((self.reg['SR'].get() >> self.FLAGS[flag]) & 1)
  
     def _set_flag(self, flag, value):
-        self.reg['SR'].set(self.reg['SR'].get() | (value << self.FLAGS[flag]))
+        if value == 0:
+            self.reg['SR'].set(self.reg['SR'].get() & ~(1 << self.FLAGS[flag]))
+        elif value == 1:
+            self.reg['SR'].set(self.reg['SR'].get() | (1 << self.FLAGS[flag]))
+            pass
+        else:
+            raise Exception("cant set flag only zero or one")
         #return (self.reg['SR'].get() >> self.FLAGS[flag]) & 1
 
     def build(self, filename, rom_start="0xc000", rom_length="16384"):
@@ -317,18 +323,22 @@ class CPU():
                 A, X, or Y > Memory	*	0	1      0b*0000001
                 * The N flag will be bit 7 of A, X, or Y - Memory
                 '''
-                if val < self.reg['A'].get():
+                if self.reg['A'].get() < val:
+                    self.log.debug("CMP: A:%s < I:%s" % (self.reg['A'].get(),val))
                     self._set_flag('zero',0)
                     self._set_flag('carry',0)
-                elif val == self.reg['A'].get():
+                elif self.reg['A'].get() == val:
+                    self.log.debug("CMP: A:%s == I:%s" % (self.reg['A'].get(),val))
                     self._set_flag('negative',0)
                     self._set_flag('zero',1)
                     self._set_flag('carry',1)
-                elif val > self.reg['A'].get():
+                elif self.reg['A'].get() > val:
+                    self.log.debug("CMP: A:%s > I:%s" % (self.reg['A'].get(),val))
                     self._set_flag('zero',0)
                     self._set_flag('carry',1)
                 else:
                     raise(Exception("CMP failed"))
+                self.log.debug(f"SR: {bin(self.reg['SR'].get())}") # % bin(self.reg['SR'].get()))")
             elif opcode == 'BEQ':
                 pcl = self._read_and_inc()
                 pch = self._read_and_inc()
@@ -378,14 +388,22 @@ class CPU():
                 # and then load A from the data, indexed by X
                 # LPX 0xPPPP - Load Acc with value from INDIRECT (pointer) address, indexed by X register.
                 # ex. 'LPX 0x0080' - if $80 = 00 and $81 = 10, and X = $05 - would get contents from $1000+5
-                addr_low = self._read_and_inc()
-                addr_high = self._read_and_inc()
+
+                # NOT IMPLEMENTED RIGHT _ GET /POINTER!/ and read that memory location
+                ptr_low = self._read_and_inc()
+                ptr_high = self._read_and_inc()
+                addr_low = self.memory.read([ptr_high, ptr_low])
+                addr_high = self.memory.read([ptr_high, ptr_low+1])
                 self.log.debug("LPX addr_low: %s addr_high %s X %s" % (hex(addr_low),hex(addr_high),self.reg['X'].get()))
                 self.reg['A'].set(self.memory.read([addr_high, addr_low, self.reg['X'].get()]))
 
             elif opcode == 'SPX':
-                addr_low = self._read_and_inc()
-                addr_high = self._read_and_inc()
+                ptr_low = self._read_and_inc()
+                ptr_high = self._read_and_inc()
+                addr_low = self.memory.read([ptr_high, ptr_low])
+                addr_high = self.memory.read([ptr_high, ptr_low+1])
+                #addr_low = self._read_and_inc()
+                #addr_high = self._read_and_inc()
                 self.log.debug("SPX addr_low: %s addr_high %s X %s" % (hex(addr_low),hex(addr_high),self.reg['X'].get()))
                 self.memory.write([addr_high, addr_low, self.reg['X'].get()], self.reg['A'].get())
                 #self.reg['A'].get(self.memory.read([addr_high, addr_low, self.reg['X'].get()]))

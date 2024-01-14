@@ -98,7 +98,11 @@ class Memory():
 
     def _get_addr(self, address):
         if isinstance(address, list):
-            return (address[0] << 8) | address[1]
+            if len(address) == 3:
+                offset = address[2]
+            else:
+                offset = 0
+            return ((address[0] << 8) | address[1]) + offset
         else:
             return address
   
@@ -186,7 +190,9 @@ class CPU():
         
         def status_log(value):
             self.log.debug("STATUS DISPLAY: %s" % hex(value).upper())
-            self.sd_win.addstr(0,2,f"Status Display: {value:#0{4}x}    ") # % hex(value).upper() )
+            #self.sd_win.clear()
+            self.sd_win.addstr(0,2,"                              ") # Cheap clear
+            self.sd_win.addstr(0,2,f" Status Display: {value:#0{4}x} ", curses.A_REVERSE) # % hex(value).upper() )
             self.sd_win.refresh()
         write_callbacks={
             0x8000: status_log
@@ -204,7 +210,7 @@ class CPU():
         #subwin(n_rows, n_cols, 0, 0)
         self.cons_win.box()
         self.log_win.box()
-        self.cons_win.addstr(2,2,"Testing my curses app")
+        self.cons_win.addstr(2,2,"TODO Implement UART I/O")
         self.sd_win.addstr(0,2,"Status Disaplay %s" % "0x00" )
         self.log_win.addstr(2,2,"Logging window")
         self.log_win.scrollok(True)
@@ -221,6 +227,20 @@ class CPU():
         self.reg['PCL'].inc()
         if self.reg['PCL'].get() == 0:
             self.reg['PCH'].inc()
+  
+    def _stack_push(self, value):
+        # write, increment
+        self.memory.write([0x01, self.reg['SP'].get()], value)
+        self.reg['SP'].inc()
+        if self.reg['SP'].get() > 255:
+            raise Exception("Stack overflow")
+
+    def _stack_pop(self):
+        # decrement, read
+        self.reg['SP'].dec()
+        if self.reg['SP'].get() < 0:
+            raise Exception("Stack underflow")
+        return self.memory.read([0x01, self.reg['SP'].get()])
 
     def _get_flag(self, flag):
         return ((self.reg['SR'].get() >> self.FLAGS[flag]) & 1)
@@ -315,22 +335,93 @@ class CPU():
                 if self._get_flag('zero') == 1:
                     self.reg['PCL'].set(pcl)
                     self.reg['PCH'].set(pch)
+                    self.log.debug("BEQ Taking Branch")
+                else:
+                    self.log.debug("BEQ Skipping Branch")
 
             elif opcode == 'HLT':
                 self.log.info("HLT encountered")
                 self.hlt = True
             elif opcode == 'JSR':
-                self.log.error("JSR not implemented")
-                while True:
-                    time.sleep(0.1)
-                raise Exception("JSR not implemented")
+                # pc low, pc high, 
+                self._stack_push(self.reg['PCL'].get())
+                self._stack_push(self.reg['PCH'].get())
+                pcl = self._read_and_inc()
+                pch = self._read_and_inc()
+                self.reg['PCL'].set(pcl)
+                self.reg['PCH'].set(pch)
+
+            elif opcode == 'RTS':
+                pch = self._stack_pop()
+                pcl = self._stack_pop()
+                self.reg['PCL'].set(pcl)
+                self.reg['PCH'].set(pch)
+                self.inc_pc()
+                self.inc_pc()
+            elif opcode == 'PHA':
+                self._stack_push(self.reg['A'].get())
+            elif opcode == 'PLA':
+                self.reg['A'].set(self._stack_pop())
+                
+            elif opcode == 'TAX':
+                self.reg['X'].set(self.reg['A'].get())
+            elif opcode == 'TXA':
+                self.reg['A'].set(self.reg['X'].get())
+            elif opcode == 'DEX':
+                self.reg['X'].dec()
+            elif opcode == 'INX':
+                self.reg['X'].inc()
+            # test memory access pointer and x index (via x index?)
+            elif opcode == 'LPX':
+                # get low/high addr pointer,
+                # set the mem addr to the address of that pointer
+                # and then load A from the data, indexed by X
+                # LPX 0xPPPP - Load Acc with value from INDIRECT (pointer) address, indexed by X register.
+                # ex. 'LPX 0x0080' - if $80 = 00 and $81 = 10, and X = $05 - would get contents from $1000+5
+                addr_low = self._read_and_inc()
+                addr_high = self._read_and_inc()
+                self.log.debug("LPX addr_low: %s addr_high %s X %s" % (hex(addr_low),hex(addr_high),self.reg['X'].get()))
+                self.reg['A'].set(self.memory.read([addr_high, addr_low, self.reg['X'].get()]))
+
+            elif opcode == 'SPX':
+                addr_low = self._read_and_inc()
+                addr_high = self._read_and_inc()
+                self.log.debug("SPX addr_low: %s addr_high %s X %s" % (hex(addr_low),hex(addr_high),self.reg['X'].get()))
+                self.memory.write([addr_high, addr_low, self.reg['X'].get()], self.reg['A'].get())
+                #self.reg['A'].get(self.memory.read([addr_high, addr_low, self.reg['X'].get()]))
+            elif opcode == 'BCS':
+                # Branch if carry set
+                pcl = self._read_and_inc()
+                pch = self._read_and_inc()
+                if self._get_flag('carry') == 1:
+                    self.reg['PCL'].set(pcl)
+                    self.reg['PCH'].set(pch)
+                    self.log.debug("BCS Taking Branch")
+                else:
+                    self.log.debug("BCS Skipping Branch")
+            elif opcode == 'TFA':
+                # trasnsfer from  status register to accumulator
+                self.reg['A'].set(self.reg['SR'].get())
+            elif opcode == 'TAF':
+                # trasnsfer from  accumulator to status register
+                self.reg['SR'].set(self.reg['A'].get())
+            elif opcode == 'CLF':
+                # Clear flags register
+                self.reg['SR'].set(0x00)
+                
+            
+            # SPX
+                
+            
+           
             else:
                 self.log.error("Un-implemented opcode %s" % opcode)
                 while True:
                     time.sleep(0.1)
                 #raise(Exception("Unknown opcode %s" % opcode))
-        
-        self.log.info("HLT encountered, exiting")
+        self.log.info("HLT encountered, halted!")
+        while True:
+            time.sleep(0.1)
 #self.registers['PCL'].set(0xfffc)
 
     

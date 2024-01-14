@@ -49,13 +49,18 @@ ptr:       0x0000
 
 from opcodes import opCodes, BYTEORDER
 from helpers import hexdump, build_rom, write_rom
-import sys, argparse
+import sys, argparse, logging
 
 #lines, lineinfo, lineadr, labels = [], [], [], {}
 
 class Gr8Assembler:
-    def __init__(self):
-        pass
+    def __init__(self,log_level=logging.INFO, logger=None):
+        #pass
+        if logger is None:
+            self.log = logging.getLogger(__name__)
+            self.log.setLevel(log_level)
+        else:
+            self.log=logger
 
     # Recursively read in files, supporting '#include' directive
     #
@@ -275,7 +280,7 @@ class Gr8Assembler:
                 except: pass
                 try: isinstance(lines[i][j], str) and int(lines[i][j], 0)                    # check if ALL elements are numeric
                 except:
-                    print('ERROR in ' + line_ids[i] + ': Undefined expression \'' + lines[i][j] + '\'')
+                    self.log.error('ERROR in ' + line_ids[i] + ': Undefined expression \'' + lines[i][j] + '\'')
                     #print(line_ids[i])
                     exit(1)
 
@@ -287,16 +292,19 @@ class Gr8Assembler:
             if showout:
                 if lineinfo[i] & LINEINFO_ORG:
                     if insert: print(':' + insert); insert = ''
-                    print('%04.4x' % (lineinfo[i] & 0xffff))
+                    self.log.debug('%04.4x' % (lineinfo[i] & 0xffff))
                 for e in lines[i]:
                     #print(f"{e} {e.__class__}")
                     try:
                         insert += ('%02.2x' % (int(e, 0) & 0xff)) + ' '
                     except:
-                        print(f"Failed to do {e}")
+                        self.log.error(f"Failed to do {e}")
                         raise
-                    if len(insert) >= 16*3 - 1: print(':' + insert); insert = ''
-        if insert: print(':' + insert)
+                    if len(insert) >= 16*3 - 1:
+                        self.log.debug(':' + insert)
+                        insert = ''
+                        
+        if insert: self.log.debug(':' + insert)
 
         if len(sys.argv) > 2:                               # print out all (matching) label definitions and their addresses
             k = sys.argv[2].find('-s') 
@@ -304,7 +312,7 @@ class Gr8Assembler:
                 sym = sys.argv[2][k+2:]
                 for key, value in labels.items():
                     if key.find(sym) != -1:
-                        print('#org '+ '%04.4x' % (value & 0xffff) + '\t' + key + ':')
+                        self.log.debug('#org '+ '%04.4x' % (value & 0xffff) + '\t' + key + ':')
 
         return(lineinfo,lineadr,lines)
 
@@ -333,7 +341,7 @@ class Gr8Assembler:
         '''
         rom_start = int(rom_start,0)
         rom_len = int(rom_len,0)
-        print(f"Rom Start: {rom_start} Rom End: {rom_start + rom_len}")
+        self.log.info(f"Rom Start: {rom_start} Rom End: {rom_start + rom_len}")
         
         rom_mem = bytearray()
         for idx in range(rom_len):

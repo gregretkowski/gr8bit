@@ -1,21 +1,7 @@
 # an emulator for a cpu
 
 '''
-Emulate my CPU.. Steps:
-
-Take a assembly file and convert it to binary..
-Load the binary into memory..
-Run the program..
-
-implemnt a memory
-start at boot location fffc
-implement each opcode
-
-implement 'uart' for input/output
-
-
-
-
+Python emulator for the GR8 CPU
 '''
 
 import argparse
@@ -24,23 +10,17 @@ import curses
 from functools import cached_property
 from genericpath import samefile
 import logging
-from os import scandir
-import re
 import tempfile
-import threading
 import time
-
 
 # the opcodes used for this cpu
 from opcodes import opCodes
 from assembler import Gr8Assembler
 
-#print(opCodes)
 
 class CursesHandler(logging.Handler):
     MAX_LINES = 10
     def __init__(self, screen):
-        #MAX_LINES = 3
         logging.Handler.__init__(self)
         self.screen = screen
         self.linebuffer = []
@@ -56,15 +36,13 @@ class CursesHandler(logging.Handler):
             screen.clear()
             for x,msg in enumerate(self.linebuffer):
                 screen.addstr(x+1,2,msg)
-            
-            #screen.addstr(x+1,2,msg)
-            #screen.addstr(2,2,msg)
             screen.box()
             screen.refresh()
         except (KeyboardInterrupt, SystemExit):
             raise
         except:
             raise
+
 
 class Register():
     def __init__(self):
@@ -84,9 +62,10 @@ class Register():
         self.value += 1
     def dec(self):
         self.value -= 1
-        
+
+
 class Memory():
-    # TODO: should we store as bytes or as ints????
+    # Storing memory as ints
     def __init__(self, memory_size, read_callbacks={}, write_callbacks={}):
         # Initialize memory with zeros
         self.memory = [0] * memory_size
@@ -182,17 +161,17 @@ class CPU():
         self.reg['SR'].set(0x00)
         self.reg['SD'].set(0x00)
         self._curses_setup()
-        # Logging setup for curses.
-
+        
+        # Logging setup for curses
         self.log = logging.getLogger(__name__)
         self.log.propagate = False
         self.log.setLevel(log_level)
         mh = CursesHandler(self.log_win)
         mf = logging.Formatter("%(asctime)s %(levelname)s %(message)s", datefmt='%H:%M:%S')
         mh.setFormatter(mf)
-        #logger = logging.getLogger('Test Logger')
         self.log.addHandler(mh)
         
+        # Memory-Mapped IO emulation
         def sd_update(value):
             self.log.debug("STATUS DISPLAY: %s" % hex(value).upper())
             self.reg['SD'].set(value)
@@ -207,8 +186,6 @@ class CPU():
 
         def read_keyready():
              self.log.debug("read_keyready %s" % self.key_ready)
-             #while True:
-             #    time.sleep(0.1)
              return self.key_ready
         
         def read_keyread():
@@ -218,13 +195,14 @@ class CPU():
             self.keybuffer = 0
             return mykey
         
-        
         read_callbacks={
             0x8003: read_keyready,
             0x8002: read_keyread,
         }
+
         self.memory = Memory((64 * 1024),write_callbacks=write_callbacks, read_callbacks=read_callbacks) # 64k of memory
- 
+        # Init Done! 
+
     def terminal_write(self,value_int):
         try:
             value = chr(value_int)
@@ -236,7 +214,6 @@ class CPU():
                 self.terminal_buffer[-1] += value
                 
             rows, cols = self.cons_win.getmaxyx()
-            #self.terminal_buffer.append(msg[0:cols-2])
             if len(self.terminal_buffer) > rows-2:
                 self.terminal_buffer.pop(0)
 
@@ -244,8 +221,6 @@ class CPU():
             for x,msg in enumerate(self.terminal_buffer):
                 self.cons_win.addstr(x+1,2,msg)
             
-            #screen.addstr(x+1,2,msg)
-            #screen.addstr(2,2,msg)
             self.cons_win.box()
             self.cons_win.refresh()
         except (KeyboardInterrupt, SystemExit):
@@ -258,18 +233,14 @@ class CPU():
         pc = self.reg['PCH'].get() << 8 | self.reg['PCL'].get()
         self.sd_win.addstr(0,2,f"                                             ") # Cheap clear
         self.sd_win.addstr(0,2,f" SD:{self.reg['SD'].get():#0{4}x} PC:{pc:#0{6}x} A:{self.reg['A'].get():#0{4}x} X:{self.reg['X'].get():#0{4}x} SP:{self.reg['SP'].get():#0{4}x} ", curses.A_REVERSE)                         
-        #self.sd_win.addstr(0,2,f" Status Display: {value:#0{4}x} ", curses.A_REVERSE) # % hex(value).upper() )
         self.sd_win.refresh()
    
     def _curses_setup(self):
         height, width = self.screen.getmaxyx()
         cols_mid = int(0.5*width)
-        # self.cons_win = self.screen.subwin(height, cols_mid, 0, cols_mid)
         self.cons_win = self.screen.subwin(1, 0)
         self.log_win = self.screen.subwin(height-2, cols_mid, 1, cols_mid)
-        self.sd_win = self.screen.subwin(0, 0) #, height-1, 0)
-        #win = self.screen.subwin(0,0)
-        #subwin(n_rows, n_cols, 0, 0)
+        self.sd_win = self.screen.subwin(0, 0)
         self.cons_win.box()
         self.log_win.box()
         self.cons_win.addstr(2,2,"TODO Implement UART I/O")
@@ -277,12 +248,9 @@ class CPU():
         self.log_win.addstr(2,2,"Logging window")
         self.log_win.scrollok(True)
         self.log_win.idlok(True)
-        #self.log_win = win.subwin(0,0)
-        #self.cons_win.refresh()
         self.screen.nodelay(True)
         self.screen.refresh()
-        
-        
+          
     def pc(self):
         return self.reg['PCH'].get() << 8 | self.reg['PCL'].get()
     
@@ -317,11 +285,10 @@ class CPU():
             pass
         else:
             raise Exception("cant set flag only zero or one")
-        #return (self.reg['SR'].get() >> self.FLAGS[flag]) & 1
 
     def build(self, filename, rom_start="0xc000", rom_length="16384"):
-        #my_rom = gr8a.convert_to_rom(args.rom_start,args.rom_length,mem_struct)
-        # %Run assembler.py smoketest.asm 16k_rom.hex -s 0xc000 -l 16384
+        # Assembles the file and loads it into memory - analog to:
+        #     assembler.py smoketest.asm 16k_rom.hex -s 0xc000 -l 16384
 
         gr8a = Gr8Assembler(logger=self.log)
         
@@ -330,16 +297,11 @@ class CPU():
 
         mem_struct = gr8a.make_mem_struct(lineaddr,lines)
     
-        #self.rom = gr8a.convert_to_rom(rom_start,rom_length,mem_struct)
         for k,v in mem_struct.items():
-            #print(k,v)
             self.memory.write(k,int.from_bytes(v))
-            #cpu_emulator.write_memory(0x1000, 42)
-            #break
         self.log.debug("loaded %s items into memory",len(mem_struct))
         self.log.debug("item at fffc: %s" % self.memory.read(0xfffc))
 
-        
     def _read_and_inc(self):
         val = self.memory.read(self.pc())
         self.inc_pc()
@@ -347,19 +309,14 @@ class CPU():
 
     def run(self,tick=0.0):
         self.log.debug("in run()")
-        #self.cons_window("XXX")
-        #elf.cons_win.addstr(2,2,"Some text to console")
         # start at boot location fffc
         while not self.hlt:
 
-            #opcode_int = int(self.memory.read(self.pc()))
             opcode_int = self._read_and_inc()
             opcode = (self.opcodes[opcode_int])
             self.log.debug("Processing Opcode %s" % opcode)
-            #logging.debug(self.opcodes[opcode])
         
             if opcode == 'JMP':
-                #self.inc_pc()
                 pcl = self._read_and_inc()
                 pch = self._read_and_inc()
                 self.reg['PCL'].set(pcl)
@@ -406,7 +363,7 @@ class CPU():
                     self._set_flag('carry',1)
                 else:
                     raise(Exception("CMP failed"))
-                self.log.debug(f"SR: {bin(self.reg['SR'].get())}") # % bin(self.reg['SR'].get()))")
+                self.log.debug(f"SR: {bin(self.reg['SR'].get())}")
             elif opcode == 'BEQ':
                 pcl = self._read_and_inc()
                 pch = self._read_and_inc()
@@ -466,8 +423,6 @@ class CPU():
                 # and then load A from the data, indexed by X
                 # LPX 0xPPPP - Load Acc with value from INDIRECT (pointer) address, indexed by X register.
                 # ex. 'LPX 0x0080' - if $80 = 00 and $81 = 10, and X = $05 - would get contents from $1000+5
-
-                # NOT IMPLEMENTED RIGHT _ GET /POINTER!/ and read that memory location
                 ptr_low = self._read_and_inc()
                 ptr_high = self._read_and_inc()
                 addr_low = self.memory.read([ptr_high, ptr_low])
@@ -481,11 +436,8 @@ class CPU():
                 ptr_high = self._read_and_inc()
                 addr_low = self.memory.read([ptr_high, ptr_low])
                 addr_high = self.memory.read([ptr_high, ptr_low+1])
-                #addr_low = self._read_and_inc()
-                #addr_high = self._read_and_inc()
                 self.log.debug("SPX addr_low: %s addr_high %s X %s" % (hex(addr_low),hex(addr_high),self.reg['X'].get()))
                 self.memory.write([addr_high, addr_low, self.reg['X'].get()], self.reg['A'].get())
-                #self.reg['A'].get(self.memory.read([addr_high, addr_low, self.reg['X'].get()]))
             elif opcode == 'BCS':
                 # Branch if carry set
                 pcl = self._read_and_inc()
@@ -541,15 +493,12 @@ class CPU():
                 self._set_flag('negative',self.reg['A'].get() >> 7)
                 self._set_flag('zero',self.reg['A'].get() == 0)
             elif opcode == 'ASL':
-                # shift left
-                #self.reg['A'].set(self.reg['A'].get() << 1)
                 carry_bit = self._get_flag('carry')
                 self.reg['A'].set((self.reg['A'].get() << 1) + carry_bit)
                 # Shifts set negative, zero and carry flags
                 if self.reg['A'].get() > 255:
                     self._set_flag('carry',1)
                     self.reg['A'].set(self.reg['A'].get() - 256)
-                # Shifts set negative, zero and carry flags
                 self._set_flag('negative',self.reg['A'].get() >> 7)
                 self._set_flag('zero',self.reg['A'].get() == 0)
             elif opcode == 'ASR':
@@ -570,6 +519,8 @@ class CPU():
                 addr_low = self._read_and_inc()
                 addr_high = self._read_and_inc()
                 self.reg['X'].set(self.memory.read([addr_high, addr_low]))
+                self._set_flag('negative',self.reg['X'].get() >> 7)
+                self._set_flag('zero',self.reg['X'].get() == 0)
             elif opcode == 'STX':
                 addr_low = self._read_and_inc()
                 addr_high = self._read_and_inc()
@@ -588,6 +539,8 @@ class CPU():
                 addr_low = self.memory.read([ptr_high, ptr_low, self.reg['X'].get() ])
                 addr_high = self.memory.read([ptr_high, ptr_low+1, self.reg['X'].get()])
                 self.reg['A'].set(self.memory.read([addr_high, addr_low, self.reg['X'].get()]))
+                self._set_flag('negative',self.reg['A'].get() >> 7)
+                self._set_flag('zero',self.reg['A'].get() == 0)
             elif opcode == 'SAX':
                 ptr_low = self._read_and_inc()
                 ptr_high = self._read_and_inc()
@@ -599,7 +552,6 @@ class CPU():
                 self.log.error("Un-implemented opcode %s" % opcode)
                 while True:
                     time.sleep(0.1)
-                #raise(Exception("Unknown opcode %s" % opcode))
             self.system_status()
             # Check for input...
             my_char = self.screen.getch()

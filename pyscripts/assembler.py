@@ -49,7 +49,7 @@ ptr:       0x0000
 
 from opcodes import opCodes, BYTEORDER
 from helpers import hexdump, build_rom, write_rom
-import sys, argparse, logging
+import sys, argparse, logging, os
 
 #lines, lineinfo, lineadr, labels = [], [], [], {}
 
@@ -82,7 +82,8 @@ class Gr8Assembler:
             k = line.find('#include')
             if k != -1:                                 # interpret anything after #include as a filename
                 line = line[k+8:].strip().replace('\"', '').replace('\'', '')
-                f_lines, f_line_ids = self.recursive_file_read(line)                        # read include files recursively
+                full_include_path = os.path.dirname(filename)+"/"+line
+                f_lines, f_line_ids = self.recursive_file_read(full_include_path)                        # read include files recursively
                 lines.extend(f_lines)
                 line_ids.extend(f_line_ids)
             else:

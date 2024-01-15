@@ -22,13 +22,14 @@ import argparse
 # pip install windows-curses
 import curses
 from functools import cached_property
+from genericpath import samefile
 import logging
 from os import scandir
 import re
 import tempfile
+import threading
 import time
-from tkinter import SEL
-from token import OP
+
 
 # the opcodes used for this cpu
 from opcodes import opCodes
@@ -52,10 +53,6 @@ class CursesHandler(logging.Handler):
             if len(self.linebuffer) > rows-2:
                 self.linebuffer.pop(0)
 
-            
-            #fs = "\n%s"
-            #screen.addstr(fs % msg)
-            #x, y = screen.getyx()
             screen.clear()
             for x,msg in enumerate(self.linebuffer):
                 screen.addstr(x+1,2,msg)
@@ -99,6 +96,7 @@ class Memory():
 
     def _get_addr(self, address):
         if isinstance(address, list):
+            # Three args means indexed memory op.
             if len(address) == 3:
                 offset = address[2]
             else:
@@ -110,7 +108,9 @@ class Memory():
     def read(self, address):
         address = self._get_addr(address)
         # Read from memory at the specified address
-        if 0 <= address < len(self.memory):
+        if address in self.read_callbacks:
+            return self.read_callbacks[address]()
+        elif 0 <= address < len(self.memory):
             return self.memory[address]
         else:
             raise IndexError("Memory out of bounds")
@@ -156,8 +156,8 @@ class CPU():
         'overflow': 6,
         'negative': 7,
     }
+ 
     def __init__(self,screen, log_level=logging.INFO):
-        
         self.screen = screen
         self.rom = None
         self.reg = {
@@ -173,8 +173,10 @@ class CPU():
         self.opcodes = {x[1][0]: x[0]  for x in opCodes.items()}
         
         self.hlt = False
-        
-    
+        self.terminal_buffer = ['']
+        self.key_ready = 0x00
+        self.keybuffer = 0x00
+
         self.reg['PCH'].set(0xff)
         self.reg['PCL'].set(0xfc)
         self.reg['SR'].set(0x00)
@@ -194,13 +196,64 @@ class CPU():
         def sd_update(value):
             self.log.debug("STATUS DISPLAY: %s" % hex(value).upper())
             self.reg['SD'].set(value)
-            
+        
+        def term_write(value):
+            self.terminal_write(value)
 
         write_callbacks={
-            0x8000: sd_update
+            0x8000: sd_update,
+            0x8001: term_write,
         }
-        self.memory = Memory((64 * 1024),write_callbacks=write_callbacks) # 64k of memory
+
+        def read_keyready():
+             self.log.debug("read_keyready %s" % self.key_ready)
+             #while True:
+             #    time.sleep(0.1)
+             return self.key_ready
+        
+        def read_keyread():
+            self.log.debug("read_keybuffer %s" % self.keybuffer)
+            mykey = self.keybuffer
+            self.key_ready = 0
+            self.keybuffer = 0
+            return mykey
+        
+        
+        read_callbacks={
+            0x8003: read_keyready,
+            0x8002: read_keyread,
+        }
+        self.memory = Memory((64 * 1024),write_callbacks=write_callbacks, read_callbacks=read_callbacks) # 64k of memory
  
+    def terminal_write(self,value_int):
+        try:
+            value = chr(value_int)
+            if value_int == 0:
+                return
+            if value == '\n':
+                self.terminal_buffer.append('')
+            else:
+                self.terminal_buffer[-1] += value
+                
+            rows, cols = self.cons_win.getmaxyx()
+            #self.terminal_buffer.append(msg[0:cols-2])
+            if len(self.terminal_buffer) > rows-2:
+                self.terminal_buffer.pop(0)
+
+            self.cons_win.clear()
+            for x,msg in enumerate(self.terminal_buffer):
+                self.cons_win.addstr(x+1,2,msg)
+            
+            #screen.addstr(x+1,2,msg)
+            #screen.addstr(2,2,msg)
+            self.cons_win.box()
+            self.cons_win.refresh()
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:
+            raise
+    
+
     def system_status(self):
         pc = self.reg['PCH'].get() << 8 | self.reg['PCL'].get()
         self.sd_win.addstr(0,2,f"                                             ") # Cheap clear
@@ -226,6 +279,7 @@ class CPU():
         self.log_win.idlok(True)
         #self.log_win = win.subwin(0,0)
         #self.cons_win.refresh()
+        self.screen.nodelay(True)
         self.screen.refresh()
         
         
@@ -255,6 +309,7 @@ class CPU():
         return ((self.reg['SR'].get() >> self.FLAGS[flag]) & 1)
  
     def _set_flag(self, flag, value):
+        # TODO/BUG: When the A register is set, the negative and zero flags are not set
         if value == 0:
             self.reg['SR'].set(self.reg['SR'].get() & ~(1 << self.FLAGS[flag]))
         elif value == 1:
@@ -311,6 +366,7 @@ class CPU():
                 self.reg['PCH'].set(pch)
             elif opcode == 'LDI':
                 self.reg['A'].set(self._read_and_inc())
+                self._set_flag('zero',self.reg['A'].get() == 0)
             elif opcode == 'STA':
                 addr_low = self._read_and_inc()
                 addr_high = self._read_and_inc()
@@ -321,6 +377,7 @@ class CPU():
                 addr_high = self._read_and_inc()
                 self.log.debug("addr_low: %s addr_high %s" % (hex(addr_low),hex(addr_high)))
                 self.reg['A'].set(self.memory.read([addr_high, addr_low]))
+                self._set_flag('zero',self.reg['A'].get() == 0)
             elif opcode == 'CMP':
                 val = self._read_and_inc()
                 '''
@@ -405,6 +462,7 @@ class CPU():
                 addr_high = self.memory.read([ptr_high, ptr_low+1])
                 self.log.debug("LPX addr_low: %s addr_high %s X %s" % (hex(addr_low),hex(addr_high),self.reg['X'].get()))
                 self.reg['A'].set(self.memory.read([addr_high, addr_low, self.reg['X'].get()]))
+                self._set_flag('zero',self.reg['A'].get() == 0)
 
             elif opcode == 'SPX':
                 ptr_low = self._read_and_inc()
@@ -530,6 +588,16 @@ class CPU():
                     time.sleep(0.1)
                 #raise(Exception("Unknown opcode %s" % opcode))
             self.system_status()
+            # Check for input...
+            my_char = self.screen.getch()
+            if my_char != -1:
+                self.log.debug("Got char %s" % my_char)
+                self.keybuffer = my_char
+                self.key_ready = 1
+            
+
+            
+
             time.sleep(tick)
         self.log.info("HLT encountered, halted!")
         while True:
@@ -543,7 +611,7 @@ if __name__ == "__main__":
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     #arser.add_argument('--pausesion='store_true', help='Enable debug mode')
     # add an argument to have a tick time
-    parser.add_argument('--tick', type=float, help='Clock tick time - adds delay for each tick')
+    parser.add_argument('--tick', type=float, default=0.0, help='Clock tick time - adds delay for each tick')
 
     parser.add_argument('filename', type=str, help='File to load into memory')
     args = parser.parse_args()

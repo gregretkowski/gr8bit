@@ -322,8 +322,7 @@ class CPU():
     def build(self, filename, rom_start="0xc000", rom_length="16384"):
         #my_rom = gr8a.convert_to_rom(args.rom_start,args.rom_length,mem_struct)
         # %Run assembler.py smoketest.asm 16k_rom.hex -s 0xc000 -l 16384
-        pass
-        # use a tempfile to store the binary
+
         gr8a = Gr8Assembler(logger=self.log)
         
         lines, line_ids = gr8a.recursive_file_read(filename)
@@ -339,6 +338,7 @@ class CPU():
             #break
         self.log.debug("loaded %s items into memory",len(mem_struct))
         self.log.debug("item at fffc: %s" % self.memory.read(0xfffc))
+
         
     def _read_and_inc(self):
         val = self.memory.read(self.pc())
@@ -594,37 +594,26 @@ class CPU():
                 self.log.debug("Got char %s" % my_char)
                 self.keybuffer = my_char
                 self.key_ready = 1
-            
-
-            
 
             time.sleep(tick)
         self.log.info("HLT encountered, halted!")
         while True:
             time.sleep(0.1)
-#self.registers['PCL'].set(0xfffc)
 
     
 if __name__ == "__main__":
-    # parse arguments using argparse module
     parser = argparse.ArgumentParser(description='Emulate a CPU')
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
-    #arser.add_argument('--pausesion='store_true', help='Enable debug mode')
-    # add an argument to have a tick time
     parser.add_argument('--tick', type=float, default=0.0, help='Clock tick time - adds delay for each tick')
-
     parser.add_argument('filename', type=str, help='File to load into memory')
     args = parser.parse_args()
     
     if args.debug:
-        logging.basicConfig(level=logging.DEBUG)
         log_level = logging.DEBUG
     else:
-        logging.basicConfig(level=logging.INFO)
         log_level = logger.INFO
     
     def go(screen):
- 
         cpu = CPU(screen=screen,log_level=log_level)
         cpu.build(args.filename)
         cpu.run(args.tick)

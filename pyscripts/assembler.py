@@ -282,6 +282,7 @@ class Gr8Assembler:
                 try: isinstance(lines[i][j], str) and int(lines[i][j], 0)                    # check if ALL elements are numeric
                 except:
                     self.log.error('ERROR in ' + line_ids[i] + ': Undefined expression \'' + lines[i][j] + '\'')
+                    print('ERROR in ' + line_ids[i] + ': Undefined expression \'' + lines[i][j] + '\'')
                     #print(line_ids[i])
                     exit(1)
 

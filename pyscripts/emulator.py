@@ -366,6 +366,7 @@ class CPU():
                 self.reg['PCH'].set(pch)
             elif opcode == 'LDI':
                 self.reg['A'].set(self._read_and_inc())
+                self._set_flag('negative',self.reg['A'].get() >> 7)
                 self._set_flag('zero',self.reg['A'].get() == 0)
             elif opcode == 'STA':
                 addr_low = self._read_and_inc()
@@ -377,6 +378,7 @@ class CPU():
                 addr_high = self._read_and_inc()
                 self.log.debug("addr_low: %s addr_high %s" % (hex(addr_low),hex(addr_high)))
                 self.reg['A'].set(self.memory.read([addr_high, addr_low]))
+                self._set_flag('negative',self.reg['A'].get() >> 7)
                 self._set_flag('zero',self.reg['A'].get() == 0)
             elif opcode == 'CMP':
                 val = self._read_and_inc()
@@ -438,15 +440,25 @@ class CPU():
                 self._stack_push(self.reg['A'].get())
             elif opcode == 'PLA':
                 self.reg['A'].set(self._stack_pop())
+                self._set_flag('negative',self.reg['A'].get() >> 7)
+                self._set_flag('zero',self.reg['A'].get() == 0)
                 
             elif opcode == 'TAX':
                 self.reg['X'].set(self.reg['A'].get())
+                self._set_flag('negative',self.reg['X'].get() >> 7)
+                self._set_flag('zero',self.reg['X'].get() == 0)
             elif opcode == 'TXA':
                 self.reg['A'].set(self.reg['X'].get())
+                self._set_flag('negative',self.reg['A'].get() >> 7)
+                self._set_flag('zero',self.reg['A'].get() == 0)
             elif opcode == 'DEX':
                 self.reg['X'].dec()
+                self._set_flag('negative',self.reg['X'].get() >> 7)
+                self._set_flag('zero',self.reg['X'].get() == 0)
             elif opcode == 'INX':
                 self.reg['X'].inc()
+                self._set_flag('negative',self.reg['X'].get() >> 7)
+                self._set_flag('zero',self.reg['X'].get() == 0)
             # test memory access pointer and x index (via x index?)
             elif opcode == 'LPX':
                 # get low/high addr pointer,
@@ -493,7 +505,8 @@ class CPU():
             elif opcode == 'CLF':
                 # Clear flags register
                 self.reg['SR'].set(0x00)
-                
+            
+            # TODO: Ensure all math ops set flags properly
             elif opcode == 'ADD':
                 addr_low = self._read_and_inc()
                 addr_high = self._read_and_inc()
@@ -619,9 +632,3 @@ if __name__ == "__main__":
         cpu.run(args.tick)
     curses.wrapper(go)
     
-
-
-
-  
-
-    pass

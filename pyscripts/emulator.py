@@ -21,6 +21,7 @@ implement 'uart' for input/output
 import argparse
 # pip install windows-curses
 import curses
+from functools import cached_property
 import logging
 from os import scandir
 import re
@@ -165,7 +166,8 @@ class CPU():
             'PCH': Register(),
             'PCL': Register(),
             'SP': Register(),
-            'SR': Register() # FLAGS register
+            'SR': Register(), # FLAGS register
+            'SD': Register() # STATUS DISPLAY register
         }
         
         self.opcodes = {x[1][0]: x[0]  for x in opCodes.items()}
@@ -176,6 +178,7 @@ class CPU():
         self.reg['PCH'].set(0xff)
         self.reg['PCL'].set(0xfc)
         self.reg['SR'].set(0x00)
+        self.reg['SD'].set(0x00)
         self._curses_setup()
         # Logging setup for curses.
 
@@ -188,17 +191,23 @@ class CPU():
         #logger = logging.getLogger('Test Logger')
         self.log.addHandler(mh)
         
-        def status_log(value):
+        def sd_update(value):
             self.log.debug("STATUS DISPLAY: %s" % hex(value).upper())
-            #self.sd_win.clear()
-            self.sd_win.addstr(0,2,"                              ") # Cheap clear
-            self.sd_win.addstr(0,2,f" Status Display: {value:#0{4}x} ", curses.A_REVERSE) # % hex(value).upper() )
-            self.sd_win.refresh()
+            self.reg['SD'].set(value)
+            
+
         write_callbacks={
-            0x8000: status_log
+            0x8000: sd_update
         }
         self.memory = Memory((64 * 1024),write_callbacks=write_callbacks) # 64k of memory
  
+    def system_status(self):
+        pc = self.reg['PCH'].get() << 8 | self.reg['PCL'].get()
+        self.sd_win.addstr(0,2,f"                                             ") # Cheap clear
+        self.sd_win.addstr(0,2,f" SD:{self.reg['SD'].get():#0{4}x} PC:{pc:#0{6}x} A:{self.reg['A'].get():#0{4}x} X:{self.reg['X'].get():#0{4}x} SP:{self.reg['SP'].get():#0{4}x} ", curses.A_REVERSE)                         
+        #self.sd_win.addstr(0,2,f" Status Display: {value:#0{4}x} ", curses.A_REVERSE) # % hex(value).upper() )
+        self.sd_win.refresh()
+   
     def _curses_setup(self):
         height, width = self.screen.getmaxyx()
         cols_mid = int(0.5*width)
@@ -281,7 +290,7 @@ class CPU():
         self.inc_pc()
         return val
 
-    def run(self):
+    def run(self,tick=0.0):
         self.log.debug("in run()")
         #self.cons_window("XXX")
         #elf.cons_win.addstr(2,2,"Some text to console")
@@ -427,16 +436,101 @@ class CPU():
                 # Clear flags register
                 self.reg['SR'].set(0x00)
                 
-            
-            # SPX
+            elif opcode == 'ADD':
+                addr_low = self._read_and_inc()
+                addr_high = self._read_and_inc()
+                value = self.memory.read([addr_high, addr_low])
+                res = self.reg['A'].get() + value + self._get_flag('carry')
+                if res > 255:
+                    self._set_flag('carry',1)
+                    res = res - 256
+                self.reg['A'].set(res)
+            elif opcode == 'AND':
+                addr_low = self._read_and_inc()
+                addr_high = self._read_and_inc()
+                value = self.memory.read([addr_high, addr_low])
+                self.reg['A'].set(self.reg['A'].get() & value)
+                # Logic ops set negative and zero flag
+                self._set_flag('negative',self.reg['A'].get() >> 7)
+                self._set_flag('zero',self.reg['A'].get() == 0)
+            elif opcode == 'ORA':
+                addr_low = self._read_and_inc()
+                addr_high = self._read_and_inc()
+                value = self.memory.read([addr_high, addr_low])
+                self.reg['A'].set(self.reg['A'].get() | value)
+                # Logic ops set negative and zero flag
+                self._set_flag('negative',self.reg['A'].get() >> 7)
+                self._set_flag('zero',self.reg['A'].get() == 0)
+            elif opcode == 'XOR':
+                addr_low = self._read_and_inc()
+                addr_high = self._read_and_inc()
+                value = self.memory.read([addr_high, addr_low])
+                self.reg['A'].set(self.reg['A'].get() ^ value)
+                # Logic ops set negative and zero flag
+                self._set_flag('negative',self.reg['A'].get() >> 7)
+                self._set_flag('zero',self.reg['A'].get() == 0)
+            elif opcode == 'ASL':
+                # shift left
+                #self.reg['A'].set(self.reg['A'].get() << 1)
+                carry_bit = self._get_flag('carry')
+                self.reg['A'].set((self.reg['A'].get() << 1) + carry_bit)
+                # Shifts set negative, zero and carry flags
+                if self.reg['A'].get() > 255:
+                    self._set_flag('carry',1)
+                    self.reg['A'].set(self.reg['A'].get() - 256)
+                # Shifts set negative, zero and carry flags
+                self._set_flag('negative',self.reg['A'].get() >> 7)
+                self._set_flag('zero',self.reg['A'].get() == 0)
+            elif opcode == 'ASR':
+                # shift right
+                #self.reg['A'].set(self.reg['A'].get() << 1)
+                # Shifts set negative, zero and carry flags
+                self.log.debug(f"A:{self.reg['A'].get()}")
+                carry_bit = self._get_flag('carry')
+                if self.reg['A'].get() > 127:
+                    self._set_flag('carry',1)
+                    
+                self.reg['A'].set(((self.reg['A'].get() >> 1) + (128 * carry_bit)) )
+                self.log.debug(f"A:{self.reg['A'].get()}")
+
+                self._set_flag('negative',self.reg['A'].get() >> 7)
+                self._set_flag('zero',self.reg['A'].get() == 0)
+            elif opcode == 'LDX':
+                addr_low = self._read_and_inc()
+                addr_high = self._read_and_inc()
+                self.reg['X'].set(self.memory.read([addr_high, addr_low]))
+            elif opcode == 'STX':
+                addr_low = self._read_and_inc()
+                addr_high = self._read_and_inc()
+                self.memory.write([addr_high, addr_low], self.reg['X'].get())
+            elif opcode == 'JPX':
+                ptr_low = self._read_and_inc()
+                ptr_high = self._read_and_inc()
+                addr_low = self.memory.read([ptr_high, ptr_low, self.reg['X'].get() ])
+                addr_high = self.memory.read([ptr_high, ptr_low+1, self.reg['X'].get()])
+                # Get Addresses
+                self.reg['PCL'].set(addr_low)
+                self.reg['PCH'].set(addr_high)
+            elif opcode == 'LAX':
+                ptr_low = self._read_and_inc()
+                ptr_high = self._read_and_inc()
+                addr_low = self.memory.read([ptr_high, ptr_low, self.reg['X'].get() ])
+                addr_high = self.memory.read([ptr_high, ptr_low+1, self.reg['X'].get()])
+                self.reg['A'].set(self.memory.read([addr_high, addr_low, self.reg['X'].get()]))
+            elif opcode == 'SAX':
+                ptr_low = self._read_and_inc()
+                ptr_high = self._read_and_inc()
+                addr_low = self.memory.read([ptr_high, ptr_low, self.reg['X'].get() ])
+                addr_high = self.memory.read([ptr_high, ptr_low+1, self.reg['X'].get()])
+                self.memory.write([addr_high, addr_low, self.reg['X'].get()], self.reg['A'].get())
                 
-            
-           
             else:
                 self.log.error("Un-implemented opcode %s" % opcode)
                 while True:
                     time.sleep(0.1)
                 #raise(Exception("Unknown opcode %s" % opcode))
+            self.system_status()
+            time.sleep(tick)
         self.log.info("HLT encountered, halted!")
         while True:
             time.sleep(0.1)
@@ -448,6 +542,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Emulate a CPU')
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     #arser.add_argument('--pausesion='store_true', help='Enable debug mode')
+    # add an argument to have a tick time
+    parser.add_argument('--tick', type=float, help='Clock tick time - adds delay for each tick')
+
     parser.add_argument('filename', type=str, help='File to load into memory')
     args = parser.parse_args()
     
@@ -462,7 +559,7 @@ if __name__ == "__main__":
  
         cpu = CPU(screen=screen,log_level=log_level)
         cpu.build(args.filename)
-        cpu.run()
+        cpu.run(args.tick)
     curses.wrapper(go)
     
 

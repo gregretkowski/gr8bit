@@ -1,3 +1,6 @@
 *__pycache__
 *.vbin
 *.vcd
+**/impl*
+*.gprj.user
+

@@ -8,7 +8,7 @@ module clock (
 
     reg [SLOW:0] slow_CLK = 0;
     always @(posedge CLK) begin
-        slow_CLK <= slow_CLK + 1;
+        slow_CLK <= slow_CLK + 1'b1;
     end
     assign clk = slow_CLK[SLOW];
     assign resetn = ~RESET;

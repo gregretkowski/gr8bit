@@ -35,12 +35,11 @@ assign get_recv = recv_av_reg;
 always @(posedge cpu_clk) begin
     if (set_send) begin
         send_reg <= send_in;
-        send_av_reg <= 1;
+        //send_av_reg <= 1;
     end
-    if (set_recv_clear) begin
-        recv_av_reg <= 0;
-    end
+
 end
+
 
 /*
 pins as per Digital.
@@ -79,6 +78,9 @@ localparam RX_STATE_STOP_BIT = 5;
 
 // Data coming in from serial port (user terminal) -- AKA RECV
 always @(posedge full_clk) begin
+    if (set_recv_clear) begin
+        recv_av_reg <= 0;
+    end
     case (rxState)
         RX_STATE_IDLE: begin
             if (uart_rx == 0) begin
@@ -94,10 +96,10 @@ always @(posedge full_clk) begin
                 rxState <= RX_STATE_READ_WAIT;
                 rxCounter <= 1;
             end else
-                rxCounter <= rxCounter + 1;
+                rxCounter <= rxCounter + 1'b1;
         end
         RX_STATE_READ_WAIT: begin
-            rxCounter <= rxCounter + 1;
+            rxCounter <= rxCounter + 1'b1;
             if ((rxCounter + 1) == DELAY_FRAMES) begin
                 rxState <= RX_STATE_READ;
             end
@@ -105,15 +107,15 @@ always @(posedge full_clk) begin
         RX_STATE_READ: begin
             rxCounter <= 1;
             recv_reg <= {uart_rx, recv_reg[7:1]};
-            rxBitNumber <= rxBitNumber + 1;
+            rxBitNumber <= rxBitNumber + 1'b1;
             if (rxBitNumber == 3'b111)
                 rxState <= RX_STATE_STOP_BIT;
             else
                 rxState <= RX_STATE_READ_WAIT;
         end
         RX_STATE_STOP_BIT: begin
-            rxCounter <= rxCounter + 1;
-            if ((rxCounter + 1) == DELAY_FRAMES) begin
+            rxCounter <= rxCounter + 1'b1;
+            if ((rxCounter + 1'b1) == DELAY_FRAMES) begin
                 rxState <= RX_STATE_IDLE;
                 rxCounter <= 0;
                 // byteReady <= 1;
@@ -149,6 +151,9 @@ localparam TX_STATE_DEBOUNCE = 4;
 
 // Data going out to serial port (user terminal) - AKA SEND
 always @(posedge full_clk) begin
+    if (set_send) begin
+        send_av_reg <= 1;
+    end
     case (txState)
         TX_STATE_IDLE: begin
             //if (btn1 == 0) begin
@@ -163,13 +168,13 @@ always @(posedge full_clk) begin
         end
         TX_STATE_START_BIT: begin
             txPinRegister <= 0;
-            if ((txCounter + 1) == DELAY_FRAMES) begin
+            if ((txCounter + 1'b1) == DELAY_FRAMES) begin
                 txState <= TX_STATE_WRITE;
                 dataOut <= send_reg; //testMemory[txByteCounter];
                 txBitNumber <= 0;
                 txCounter <= 0;
             end else
-                txCounter <= txCounter + 1;
+                txCounter <= txCounter + 1'b1;
         end
         TX_STATE_WRITE: begin
             txPinRegister <= dataOut[txBitNumber];
@@ -179,21 +184,21 @@ always @(posedge full_clk) begin
                 end else begin
                     // send bit complete, send next bit
                     txState <= TX_STATE_WRITE;
-                    txBitNumber <= txBitNumber + 1;
+                    txBitNumber <= txBitNumber + 1'b1;
                 end
                 txCounter <= 0;
             end else
-                txCounter <= txCounter + 1;
+                txCounter <= txCounter + 1'b1;
         end
         TX_STATE_STOP_BIT: begin
             txPinRegister <= 1;
-            if ((txCounter + 1) == DELAY_FRAMES) begin
+            if ((txCounter + 1'b1) == DELAY_FRAMES) begin
                 // sent whole char, go into idle.
                 txState <= TX_STATE_IDLE;
                 send_av_reg <= 0;
                 txCounter <= 0;
             end else
-                txCounter <= txCounter + 1;
+                txCounter <= txCounter + 1'b1;
         end
         /*
         TX_STATE_DEBOUNCE: begin

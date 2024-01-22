@@ -22,7 +22,7 @@ initial begin
 end
 
 always @(posedge clk) begin
-    count <= count + 1;
+    count <= count + 1'b1;
     
     // Debounce by reading state only on
     // count roll-over
